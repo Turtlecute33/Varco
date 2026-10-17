@@ -54,7 +54,8 @@ fun EditServerScreen(id: String?, nav: Navigator) {
     var user by rememberSaveable { mutableStateOf(old?.user.orEmpty()) }
     var keyId by rememberSaveable { mutableStateOf(old?.keyId) }
     var savePassword by rememberSaveable { mutableStateOf(old?.password != null) }
-    var password by rememberSaveable { mutableStateOf(old?.password.orEmpty()) }
+    // remember, not rememberSaveable: the saved instance state is kept outside the app.
+    var password by remember { mutableStateOf(old?.password.orEmpty()) }
 
     val portNumber = port.toIntOrNull()?.takeIf { it in 1..65535 }
     val valid = host.isNotBlank() && user.isNotBlank() && portNumber != null && host.none { it.isWhitespace() }

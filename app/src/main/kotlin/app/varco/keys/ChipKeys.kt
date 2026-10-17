@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.security.keystore.KeyProtection
-import android.security.keystore.StrongBoxUnavailableException
 import app.varco.data.SshKey
 import org.bouncycastle.asn1.ASN1EncodableVector
 import org.bouncycastle.asn1.ASN1Integer
@@ -78,7 +77,9 @@ class ChipKeys(private val context: Context) {
         val strongBox = !ed25519 && hasStrongBox
         val (pair, inStrongBox) = try {
             make(strongBox) to strongBox
-        } catch (_: StrongBoxUnavailableException) {
+        } catch (e: Exception) {
+            // Some StrongBox chips fail with other errors than StrongBoxUnavailableException.
+            if (!strongBox) throw e
             make(false) to false
         }
         val blob = try {

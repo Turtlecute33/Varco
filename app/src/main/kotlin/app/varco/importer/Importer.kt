@@ -64,7 +64,13 @@ class Importer(
         var inChip = 0
         val keyIdsByFile = HashMap<String, String>()
         for (file in byKind[Kind.PRIVATE_KEY].orEmpty()) {
-            when (val key = importKey(file)) {
+            val key = try {
+                importKey(file)
+            } catch (e: Exception) {
+                skipped += "${file.name}: ${e.message ?: "cannot read the key"}"
+                continue
+            }
+            when (key) {
                 null -> skipped += "${file.name}: skipped (no passphrase)"
                 else -> {
                     keyIdsByFile[file.name] = key.id
@@ -129,6 +135,8 @@ class Importer(
             }
             val pem = ByteArrayOutputStream().also { pair.writeOpenSSHv1PrivateKey(it, null) }.toString(Charsets.US_ASCII.name())
             val parsed = OpenSshKey.parse(pem)
+            val type = SshWire.Reader(parsed.publicBlob).text()
+            require(type in USABLE_TYPES) { "$type keys are not supported" }
             val blob = Base64.getEncoder().encodeToString(parsed.publicBlob)
             store.state.value.keys.firstOrNull { it.publicKey == blob }?.let { return it } // already there
             val name = file.name.ifBlank { parsed.comment.ifBlank { "Imported key" } }
@@ -136,7 +144,7 @@ class Importer(
                 id = UUID.randomUUID().toString(),
                 name = name,
                 kind = SshKey.Kind.FILE,
-                type = SshWire.Reader(parsed.publicBlob).text(),
+                type = type,
                 publicKey = blob,
                 privateKey = pem,
             )
@@ -228,6 +236,11 @@ class Importer(
         const val FONT_CUSTOM = "custom"
         private const val MAX_BYTES = 20 * 1024 * 1024
         private val DEFAULT_KEYS = listOf("id_ed25519", "id_ecdsa", "id_rsa")
+
+        /** Key types that Varco offers to servers (DSA and FIDO keys are not). */
+        private val USABLE_TYPES = setOf(
+            "ssh-ed25519", "ssh-rsa", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521",
+        )
         private val KEY_LINE = Regex("""^(ssh-|ecdsa-|sk-)\S+\s+[A-Za-z0-9+/=]+(\s.*)?$""")
         private val HOST_LINE = Regex("""^host\s+\S.*$""", RegexOption.IGNORE_CASE)
         private val COLOR_LINE = Regex("""^(foreground|background|cursor|color\d{1,3})\s*[=:].+$""", RegexOption.IGNORE_CASE)

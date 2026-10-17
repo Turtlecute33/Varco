@@ -64,7 +64,12 @@ object SshWire {
     fun publicBlob(key: PublicKey): ByteArray = when (val type = typeOf(key)) {
         RSA -> (key as RSAPublicKey).let { Writer().string(RSA).mpint(it.publicExponent).mpint(it.modulus).bytes() }
         ECDSA_P256 -> Writer().string(type).string("nistp256").string(ecPoint(key as ECPublicKey)).bytes()
-        else -> Writer().string(ED25519).string(ed25519Raw(key)).bytes()
+        else -> ed25519Blob(ed25519Raw(key))
+    }
+
+    fun ed25519Blob(raw: ByteArray): ByteArray {
+        require(raw.size == 32) { "Bad Ed25519 key" }
+        return Writer().string(ED25519).string(raw).bytes()
     }
 
     /** "type base64 comment", one authorized_keys line. */

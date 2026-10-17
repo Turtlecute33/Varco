@@ -144,6 +144,7 @@ class Shell(
                 cause.any { it is SocketTimeoutException } -> "Connection timed out"
                 cause.any { it is JSchChangedHostKeyException } -> "Host key changed — not trusted"
                 cause.any { it is JSchUnknownHostKeyException } -> "Host key not trusted"
+                cause.any { it is SignFailed } -> cause.first { it is SignFailed }.message.orEmpty()
                 e.message?.contains("Auth fail", ignoreCase = true) == true -> "Sign-in failed"
                 else -> e.message ?: e.javaClass.simpleName
             }

@@ -48,6 +48,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.varco.app
 import app.varco.ssh.Ask
 import app.varco.ui.components.Icons
+import com.yubico.yubikit.core.smartcard.SmartCardConnection
+import java.io.IOException
 
 /** Shows the oldest open question of any connection (or of an import) as a dialog. */
 @Composable
@@ -230,23 +232,42 @@ private fun SecretField(value: String, onChange: (String) -> Unit, label: String
 @Composable
 private fun TouchDialog(ask: Ask.Touch) {
     var nfcOff by remember(ask) { mutableStateOf(false) }
-    YubiKeyDiscovery(onDevice = { ask.answer(it) }, onNfcOff = { nfcOff = true })
+    var busy by remember(ask) { mutableStateOf(false) }
+    var again by remember(ask) { mutableStateOf(false) }
+    YubiKeyDiscovery(onDevice = { device ->
+        busy = true
+        try {
+            val result = device.openConnection(SmartCardConnection::class.java).use { connection ->
+                runCatching { ask.use(connection) }
+            }
+            val error = result.exceptionOrNull()
+            // A link that ends during the work (key moved away): wait for the next tap.
+            if (error is IOException) again = true else ask.answer(result)
+        } catch (_: IOException) {
+            again = true
+        } finally {
+            busy = false
+        }
+    }, onNfcOff = { nfcOff = true })
     AlertDialog(
         onDismissRequest = {},
         icon = { Icon(Icons.Nfc, null) },
-        title = { Text("Hold your YubiKey") },
+        title = { Text(if (busy) "Keep holding" else "Hold your YubiKey") },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    "Hold the YubiKey to the back of the phone until this closes, or plug it in.\n${ask.keyName} · ${ask.server}" +
-                        if (nfcOff) "\nNFC is off: turn it on, or use USB." else "",
+                    when {
+                        busy -> "Signing with ${ask.keyName}…"
+                        again -> "The YubiKey moved away too early. Hold it to the phone again and keep it still."
+                        else -> "Hold the YubiKey to the back of the phone until this closes, or plug it in."
+                    } + "\n${ask.keyName} · ${ask.server}" + if (nfcOff) "\nNFC is off: turn it on, or use USB." else "",
                 )
                 Spacer(Modifier.height(16.dp))
                 LoadingIndicator(Modifier.size(48.dp).padding(4.dp))
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = { ask.answer(null) }) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = { ask.answer(null) }, enabled = !busy) { Text("Cancel") } },
     )
 }
 

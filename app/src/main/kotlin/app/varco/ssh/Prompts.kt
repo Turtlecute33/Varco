@@ -1,6 +1,6 @@
 package app.varco.ssh
 
-import com.yubico.yubikit.core.YubiKeyDevice
+import com.yubico.yubikit.core.smartcard.SmartCardConnection
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,8 +35,15 @@ sealed class Ask<T> {
     /** YubiKey PIN; null = cancel. [triesLeft] is set after a wrong PIN. */
     class Pin(override val server: String, val keyName: String, val triesLeft: Int?) : Ask<CharArray?>()
 
-    /** Waits for a YubiKey on NFC or USB; the UI answers with the device it found, or null on cancel. */
-    class Touch(override val server: String, val keyName: String) : Ask<YubiKeyDevice?>()
+    /**
+     * Waits for a YubiKey on NFC or USB and runs [use] with it, on a YubiKit thread, before the dialog
+     * closes. The answer is the result (an error too), or null on cancel. A dropped NFC link waits for a new tap.
+     */
+    class Touch(
+        override val server: String,
+        val keyName: String,
+        val use: (SmartCardConnection) -> ByteArray,
+    ) : Ask<Result<ByteArray>?>()
 
     /** Passphrase of a key file being imported; null = skip this key. */
     class Passphrase(override val server: String, val keyName: String, val retry: Boolean) : Ask<CharArray?>()

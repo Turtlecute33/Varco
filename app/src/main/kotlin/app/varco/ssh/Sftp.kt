@@ -20,18 +20,19 @@ class Sftp(connection: SshConnection) : AutoCloseable {
 
     /** Folders first, then files; both by name. "." and ".." are left out. */
     fun list(path: String): List<Entry> {
-        val out = ArrayList<Entry>()
+        val found = ArrayList<ChannelSftp.LsEntry>()
+        // Only collect here: jsch parses the listing and a stat with one shared buffer.
         channel.ls(path) { e ->
-            if (e.filename != "." && e.filename != "..") {
-                val a = e.attrs
-                val isLink = a.isLink
-                // A link to a folder opens like a folder.
-                val isDir = a.isDir || (isLink && runCatching { channel.stat(join(path, e.filename)).isDir }.getOrDefault(false))
-                out += Entry(e.filename, join(path, e.filename), isDir, isLink, a.size, a.mTime * 1000L)
-            }
+            if (e.filename != "." && e.filename != "..") found += e
             ChannelSftp.LsEntrySelector.CONTINUE
         }
-        return out.sortedWith(compareBy<Entry>({ !it.isDir }, { it.name.lowercase() }))
+        return found.map { e ->
+            val a = e.attrs
+            val full = join(path, e.filename)
+            // A link to a folder opens like a folder.
+            val isDir = a.isDir || (a.isLink && runCatching { channel.stat(full).isDir }.getOrDefault(false))
+            Entry(e.filename, full, isDir, a.isLink, a.size, a.mTime * 1000L)
+        }.sortedWith(compareBy<Entry>({ !it.isDir }, { it.name.lowercase() }))
     }
 
     fun download(path: String, out: OutputStream, progress: (Long) -> Unit) =

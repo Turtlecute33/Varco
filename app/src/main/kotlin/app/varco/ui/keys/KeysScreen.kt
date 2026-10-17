@@ -221,7 +221,7 @@ private fun AddYubiKeyDialog(onDone: (String?) -> Unit) {
                     else -> found.forEach { slot ->
                         val blob = slot.blob
                         ListRow(
-                            title = "Slot %02x · %s".format(slot.slot.value, typeName(SshWire.typeOf(slot.publicKey))),
+                            title = "Slot %02x · %s".format(slot.slot.value, typeName(slot.sshType)),
                             subtitle = SshWire.fingerprint(blob),
                             monoSubtitle = true,
                             horizontalPadding = 0.dp,
@@ -230,7 +230,7 @@ private fun AddYubiKeyDialog(onDone: (String?) -> Unit) {
                                     id = UUID.randomUUID().toString(),
                                     name = "YubiKey %02x".format(slot.slot.value),
                                     kind = SshKey.Kind.YUBIKEY_PIV,
-                                    type = SshWire.typeOf(slot.publicKey),
+                                    type = slot.sshType,
                                     publicKey = Base64.getEncoder().encodeToString(blob),
                                     pivSlot = slot.slot.value,
                                 )

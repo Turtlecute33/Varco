@@ -49,7 +49,8 @@
 ## Tests
 
 - JVM: `./gradlew :app:testDebugUnitTest` (config, colours, known_hosts, key formats, PIV padding, store codec).
-- Live test (2026-10-17, API 35 emulator against OpenSSH 10.3 on localhost): Keystore Ed25519 key,
+- Live test (2026-10-17, API 35 emulator against OpenSSH 10.3 on localhost): Keystore Ed25519 key, host key
+  change by key-type switch (MITM case), prompt closed with its session, SFTP with symlinks and upload,
   imported Ed25519 (with passphrase) / RSA-3072 / ECDSA keys, per-use auth with device PIN, app lock,
   host-key prompt, reconnect, vim, truecolor, extra keys, snippets, SFTP list and download, Termux import,
   release build with R8. Negotiated: `mlkem768x25519-sha256`, `chacha20-poly1305@openssh.com`.

@@ -38,10 +38,13 @@ class Store(dir: File, private val vault: Vault, private val scope: CoroutineSco
         } catch (_: FileNotFoundException) {
             return
         }
-        // A damaged file or a lost Keystore key must not crash the app; the user starts again.
-        _state.value = runCatching { decode(JSONObject(vault.decryptString(blob))) }
-            .onFailure { Log.w(TAG, "Store unreadable, starting empty", it) }
-            .getOrDefault(AppState())
+        // A damaged file or a lost Keystore key must not crash the app. The file moves aside (never
+        // overwritten), so that a passing Keystore error loses no data; the user starts with an empty list.
+        _state.value = runCatching { decode(JSONObject(vault.decryptString(blob))) }.getOrElse {
+            Log.w(TAG, "Store unreadable, kept as $UNREADABLE")
+            file.baseFile.renameTo(File(file.baseFile.parentFile, UNREADABLE))
+            AppState()
+        }
     }
 
     /**
@@ -75,6 +78,7 @@ class Store(dir: File, private val vault: Vault, private val scope: CoroutineSco
         const val TAG = "VarcoStore"
         const val VERSION = 1
         const val COALESCE_MS = 300L
+        const val UNREADABLE = "store.bin.unreadable"
 
         fun encode(s: AppState): JSONObject = JSONObject()
             .put("version", VERSION)

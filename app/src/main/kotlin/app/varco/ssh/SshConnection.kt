@@ -1,5 +1,7 @@
 package app.varco.ssh
 
+import android.security.keystore.KeyPermanentlyInvalidatedException
+import android.security.keystore.UserNotAuthenticatedException
 import app.varco.data.KnownHost
 import app.varco.data.Server
 import app.varco.data.SshKey
@@ -15,12 +17,26 @@ import com.jcraft.jsch.Session
 import com.jcraft.jsch.UIKeyboardInteractive
 import com.jcraft.jsch.UserInfo
 import com.yubico.yubikit.core.application.InvalidPinException
-import com.yubico.yubikit.core.smartcard.SmartCardConnection
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
+import java.io.IOException
 import java.util.Base64
 
 /** The user stopped a prompt (password, PIN, host key, fingerprint). The connection ends without an error. */
 class Cancelled : RuntimeException("Cancelled")
+
+/** A key could not sign; [message] says why, in words for the user. */
+class SignFailed(message: String, cause: Throwable) : RuntimeException(message, cause)
+
+private fun signError(key: SshKey, e: Exception): String = when (e) {
+    is KeyPermanentlyInvalidatedException ->
+        "Android reset the key \"${key.name}\" (screen lock or fingerprints changed). Make a new key."
+    is UserNotAuthenticatedException -> "Unlock the phone, then connect again."
+    is Piv.WrongKeyException -> e.message.orEmpty()
+    is IOException -> "The YubiKey connection ended. Hold the key still until the dialog closes."
+    else -> "${key.name}: ${e.message ?: e.javaClass.simpleName}"
+}
 
 /** What connections need from the app. */
 class SshEnv(val store: Store, val chip: ChipKeys, val prompts: Prompts)
@@ -66,20 +82,36 @@ class SshConnection(private val env: SshEnv, val server: Server) {
         }
     }
 
+    /** Ends the connection, and with it any open prompt of this connection. */
     fun close() {
+        askJob.cancel()
         session?.disconnect()
     }
 
-    private fun <T> ask(question: Ask<T>): T = runBlocking { env.prompts.ask(question) }
+    /** Parent of this connection's prompts: [close] cancels it, so that no dialog outlives its connection. */
+    private val askJob = Job()
+
+    private fun <T> ask(question: Ask<T>): T = try {
+        runBlocking(askJob) { env.prompts.ask(question) }
+    } catch (_: CancellationException) {
+        throw Cancelled()
+    }
 
     /** A key whose private part stays outside the app: Keystore (secure chip) or YubiKey PIV. */
     private inner class ExternalIdentity(private val key: SshKey) : Identity {
         override fun setPassphrase(passphrase: ByteArray?) = true
         override fun getPublicKeyBlob(): ByteArray = key.publicBlob
         override fun getSignature(data: ByteArray): ByteArray = getSignature(data, algName)
-        override fun getSignature(data: ByteArray, alg: String): ByteArray = when (key.kind) {
-            SshKey.Kind.KEYSTORE -> chipSign(data, alg)
-            else -> pivSign(data, alg)
+        override fun getSignature(data: ByteArray, alg: String): ByteArray = try {
+            when (key.kind) {
+                SshKey.Kind.KEYSTORE -> chipSign(data, alg)
+                else -> pivSign(data, alg)
+            }
+        } catch (e: RuntimeException) {
+            throw e
+        } catch (e: Exception) {
+            // jsch turns other exceptions into a bare "Auth fail"; this keeps the reason.
+            throw SignFailed(signError(key, e), e)
         }
 
         // jsch picks rsa-sha2-512/256 for "ssh-rsa" keys from the server's server-sig-algs.
@@ -96,14 +128,16 @@ class SshConnection(private val env: SshEnv, val server: Server) {
         }
 
         private fun pivSign(data: ByteArray, alg: String): ByteArray {
+            val slot = Piv.slot(requireNotNull(key.pivSlot))
             var triesLeft: Int? = null
             while (true) {
                 val pin = ask(Ask.Pin(server.name, key.name, triesLeft)) ?: throw Cancelled()
                 try {
-                    val device = ask(Ask.Touch(server.name, key.name)) ?: throw Cancelled()
-                    device.openConnection(SmartCardConnection::class.java).use { connection ->
-                        return Piv.sign(connection, Piv.slot(requireNotNull(key.pivSlot)), key.publicBlob, pin, data, alg)
-                    }
+                    // The dialog stays open until the YubiKey has signed, so the user holds the key long enough.
+                    val result = ask(Ask.Touch(server.name, key.name) { connection ->
+                        Piv.sign(connection, slot, key.publicBlob, pin, data, alg)
+                    }) ?: throw Cancelled()
+                    return result.getOrThrow()
                 } catch (e: InvalidPinException) {
                     triesLeft = e.attemptsRemaining
                     if (triesLeft == 0) throw IllegalStateException("The YubiKey PIN is blocked. Unblock it with the PUK.")
@@ -184,7 +218,9 @@ class SshConnection(private val env: SshEnv, val server: Server) {
             }
             val trusted = own.any { it.type == type && it.key == encoded } ||
                 (own.none { it.type == type } && imported.any { !it.revoked && it.type == type && it.key.contentEquals(key) })
-            val changed = !trusted && (own.any { it.type == type } || imported.any { !it.revoked && it.type == type })
+            // Any other known key counts: a server that suddenly offers only another key type is suspect too
+            // (jsch asks for the known types first, see getHostKey).
+            val changed = !trusted && (own.isNotEmpty() || imported.any { !it.revoked })
             if (!trusted) {
                 val yes = ask(Ask.HostKey(server.name, server.host, server.port, type, SshWire.fingerprint(key), changed))
                 if (!yes) return if (changed) HostKeyRepository.CHANGED else HostKeyRepository.NOT_INCLUDED
@@ -200,12 +236,20 @@ class SshConnection(private val env: SshEnv, val server: Server) {
             return HostKeyRepository.OK
         }
 
-        /** Known keys of this server; jsch then offers their types first, so that a known key is used. */
-        override fun getHostKey(ignored: String?, type: String?): Array<HostKey> =
-            env.store.state.value.knownHosts
-                .filter { it.host == host && it.port == server.port && (type == null || it.type == type) }
-                .mapNotNull { runCatching { HostKey(KnownHosts.name(host, server.port), Base64.getDecoder().decode(it.key)) }.getOrNull() }
+        /** Known keys of this server (own and imported); jsch asks for their types first, so that a known key is used. */
+        override fun getHostKey(ignored: String?, type: String?): Array<HostKey> {
+            val state = env.store.state.value
+            val own = state.knownHosts
+                .filter { it.host == host && it.port == server.port }
+                .map { Base64.getDecoder().decode(it.key) }
+            val imported = KnownHosts.parse(state.importedKnownHosts)
+                .filter { !it.revoked && KnownHosts.matches(it.hosts, host, server.port) }
+                .map { it.key }
+            return (own + imported)
+                .filter { type == null || SshWire.Reader(it).text() == type }
+                .mapNotNull { runCatching { HostKey(KnownHosts.name(host, server.port), it) }.getOrNull() }
                 .toTypedArray()
+        }
 
         override fun getHostKey(): Array<HostKey> = getHostKey(null, null)
         override fun add(hostkey: HostKey?, ui: UserInfo?) = Unit
@@ -230,7 +274,7 @@ class SshConnection(private val env: SshEnv, val server: Server) {
             "cipher.s2c" to CIPHERS,
             "mac.c2s" to MACS,
             "mac.s2c" to MACS,
-            "PubkeyAcceptedAlgorithms" to "ssh-ed25519,ecdsa-sha2-nistp256,rsa-sha2-512,rsa-sha2-256",
+            "PubkeyAcceptedAlgorithms" to "ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,rsa-sha2-512,rsa-sha2-256",
             "StrictHostKeyChecking" to "yes",
             "HashKnownHosts" to "no",
         )
