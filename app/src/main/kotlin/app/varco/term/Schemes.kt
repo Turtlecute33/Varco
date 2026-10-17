@@ -1,0 +1,107 @@
+package app.varco.term
+
+/**
+ * A terminal colour scheme: foreground, background, cursor and the 16 ANSI colours (ARGB).
+ * [id] is stable: settings refer to it. Imported schemes have ids that start with "custom:".
+ */
+class Scheme(
+    val id: String,
+    val name: String,
+    val foreground: Int,
+    val background: Int,
+    val cursor: Int,
+    val ansi: IntArray,
+) {
+    init {
+        require(ansi.size == 16) { "A scheme has 16 ANSI colours" }
+    }
+
+    /** True for dark backgrounds; the UI around the terminal follows it. */
+    val isDark: Boolean
+        get() {
+            val r = background shr 16 and 0xff
+            val g = background shr 8 and 0xff
+            val b = background and 0xff
+            return (0.2126 * r + 0.7152 * g + 0.0722 * b) < 128
+        }
+}
+
+object Schemes {
+    val all: List<Scheme> = listOf(
+        scheme(
+            "catppuccin-mocha", "Catppuccin Mocha", 0xcdd6f4, 0x1e1e2e, 0xf5e0dc,
+            0x45475a, 0xf38ba8, 0xa6e3a1, 0xf9e2af, 0x89b4fa, 0xf5c2e7, 0x94e2d5, 0xbac2de,
+            0x585b70, 0xf38ba8, 0xa6e3a1, 0xf9e2af, 0x89b4fa, 0xf5c2e7, 0x94e2d5, 0xa6adc8,
+        ),
+        scheme(
+            "catppuccin-macchiato", "Catppuccin Macchiato", 0xcad3f5, 0x24273a, 0xf4dbd6,
+            0x494d64, 0xed8796, 0xa6da95, 0xeed49f, 0x8aadf4, 0xf5bde6, 0x8bd5ca, 0xb8c0e0,
+            0x5b6078, 0xed8796, 0xa6da95, 0xeed49f, 0x8aadf4, 0xf5bde6, 0x8bd5ca, 0xa5adcb,
+        ),
+        scheme(
+            "catppuccin-frappe", "Catppuccin Frappé", 0xc6d0f5, 0x303446, 0xf2d5cf,
+            0x51576d, 0xe78284, 0xa6d189, 0xe5c890, 0x8caaee, 0xf4b8e4, 0x81c8be, 0xb5bfe2,
+            0x626880, 0xe78284, 0xa6d189, 0xe5c890, 0x8caaee, 0xf4b8e4, 0x81c8be, 0xa5adce,
+        ),
+        scheme(
+            "catppuccin-latte", "Catppuccin Latte", 0x4c4f69, 0xeff1f5, 0xdc8a78,
+            0x5c5f77, 0xd20f39, 0x40a02b, 0xdf8e1d, 0x1e66f5, 0xea76cb, 0x179299, 0xacb0be,
+            0x6c6f85, 0xd20f39, 0x40a02b, 0xdf8e1d, 0x1e66f5, 0xea76cb, 0x179299, 0xbcc0cc,
+        ),
+        scheme(
+            "tokyo-night", "Tokyo Night", 0xc0caf5, 0x1a1b26, 0xc0caf5,
+            0x15161e, 0xf7768e, 0x9ece6a, 0xe0af68, 0x7aa2f7, 0xbb9af7, 0x7dcfff, 0xa9b1d6,
+            0x414868, 0xf7768e, 0x9ece6a, 0xe0af68, 0x7aa2f7, 0xbb9af7, 0x7dcfff, 0xc0caf5,
+        ),
+        scheme(
+            "dracula", "Dracula", 0xf8f8f2, 0x282a36, 0xf8f8f2,
+            0x21222c, 0xff5555, 0x50fa7b, 0xf1fa8c, 0xbd93f9, 0xff79c6, 0x8be9fd, 0xf8f8f2,
+            0x6272a4, 0xff6e6e, 0x69ff94, 0xffffa5, 0xd6acff, 0xff92df, 0xa4ffff, 0xffffff,
+        ),
+        scheme(
+            "nord", "Nord", 0xd8dee9, 0x2e3440, 0xd8dee9,
+            0x3b4252, 0xbf616a, 0xa3be8c, 0xebcb8b, 0x81a1c1, 0xb48ead, 0x88c0d0, 0xe5e9f0,
+            0x4c566a, 0xbf616a, 0xa3be8c, 0xebcb8b, 0x81a1c1, 0xb48ead, 0x8fbcbb, 0xeceff4,
+        ),
+        scheme(
+            "gruvbox-dark", "Gruvbox Dark", 0xebdbb2, 0x282828, 0xebdbb2,
+            0x282828, 0xcc241d, 0x98971a, 0xd79921, 0x458588, 0xb16286, 0x689d6a, 0xa89984,
+            0x928374, 0xfb4934, 0xb8bb26, 0xfabd2f, 0x83a598, 0xd3869b, 0x8ec07c, 0xebdbb2,
+        ),
+        scheme(
+            "one-dark", "One Dark", 0xabb2bf, 0x282c34, 0x528bff,
+            0x282c34, 0xe06c75, 0x98c379, 0xe5c07b, 0x61afef, 0xc678dd, 0x56b6c2, 0xabb2bf,
+            0x5c6370, 0xe06c75, 0x98c379, 0xe5c07b, 0x61afef, 0xc678dd, 0x56b6c2, 0xffffff,
+        ),
+        scheme(
+            "rose-pine", "Rosé Pine", 0xe0def4, 0x191724, 0x524f67,
+            0x26233a, 0xeb6f92, 0x31748f, 0xf6c177, 0x9ccfd8, 0xc4a7e7, 0xebbcba, 0xe0def4,
+            0x6e6a86, 0xeb6f92, 0x31748f, 0xf6c177, 0x9ccfd8, 0xc4a7e7, 0xebbcba, 0xe0def4,
+        ),
+        scheme(
+            "solarized-dark", "Solarized Dark", 0x839496, 0x002b36, 0x93a1a1,
+            0x073642, 0xdc322f, 0x859900, 0xb58900, 0x268bd2, 0xd33682, 0x2aa198, 0xeee8d5,
+            0x002b36, 0xcb4b16, 0x586e75, 0x657b83, 0x839496, 0x6c71c4, 0x93a1a1, 0xfdf6e3,
+        ),
+        scheme(
+            "solarized-light", "Solarized Light", 0x657b83, 0xfdf6e3, 0x586e75,
+            0x073642, 0xdc322f, 0x859900, 0xb58900, 0x268bd2, 0xd33682, 0x2aa198, 0xeee8d5,
+            0x002b36, 0xcb4b16, 0x586e75, 0x657b83, 0x839496, 0x6c71c4, 0x93a1a1, 0xfdf6e3,
+        ),
+        scheme(
+            "termux", "Termux", 0xffffff, 0x000000, 0xffffff,
+            0x000000, 0xcd0000, 0x00cd00, 0xcdcd00, 0x6495ed, 0xcd00cd, 0x00cdcd, 0xe5e5e5,
+            0x7f7f7f, 0xff0000, 0x00ff00, 0xffff00, 0x5c5cff, 0xff00ff, 0x00ffff, 0xffffff,
+        ),
+    )
+
+    val default: Scheme = all.first()
+
+    fun byId(id: String?, custom: List<Scheme> = emptyList()): Scheme =
+        custom.firstOrNull { it.id == id } ?: all.firstOrNull { it.id == id } ?: default
+
+    private fun scheme(id: String, name: String, fg: Int, bg: Int, cursor: Int, vararg ansi: Int) =
+        Scheme(id, name, opaque(fg), opaque(bg), opaque(cursor), IntArray(16) { opaque(ansi[it]) })
+
+    fun opaque(rgb: Int): Int = rgb or 0xff000000.toInt()
+}

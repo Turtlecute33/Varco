@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A shell prompt ">_" in the safe zone (66 dp circle) of a 108 dp adaptive icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M38,41 L51,54 L38,67"
+        android:strokeWidth="7"
+        android:strokeColor="#CBA6F7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M58,67 L71,67"
+        android:strokeWidth="7"
+        android:strokeColor="#89B4FA"
+        android:strokeLineCap="round" />
+</vector>

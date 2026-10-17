@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#1E1E2E</color>
+    <!-- Window background before Compose draws: the default terminal scheme (Catppuccin Mocha). -->
+    <color name="window_background">#1E1E2E</color>
+</resources>
