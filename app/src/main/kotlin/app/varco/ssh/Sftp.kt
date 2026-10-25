@@ -1,6 +1,7 @@
 package app.varco.ssh
 
 import com.jcraft.jsch.ChannelSftp
+import com.jcraft.jsch.SftpException
 import com.jcraft.jsch.SftpProgressMonitor
 import java.io.InputStream
 import java.io.OutputStream
@@ -38,8 +39,17 @@ class Sftp(connection: SshConnection) : AutoCloseable {
     fun download(path: String, out: OutputStream, progress: (Long) -> Unit) =
         channel.get(path, out, Monitor(progress))
 
+    /** Replaces a file at [path]: check [exists] first, so that the user can decide. */
     fun upload(input: InputStream, path: String, progress: (Long) -> Unit) =
         channel.put(input, path, Monitor(progress), ChannelSftp.OVERWRITE)
+
+    /** True when [path] exists. A link counts, also a broken one: an upload writes through it. */
+    fun exists(path: String): Boolean = try {
+        channel.lstat(path)
+        true
+    } catch (e: SftpException) {
+        if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) false else throw e
+    }
 
     fun mkdir(path: String) = channel.mkdir(path)
 

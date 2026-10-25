@@ -78,6 +78,10 @@ class FilesModel(private val context: Application, private val serverId: String)
     var transfer by mutableStateOf<Pair<Long, Long>?>(null)
         private set
 
+    /** An upload and its file name, held back because the name is already in the folder; the screen asks. */
+    var conflict by mutableStateOf<Pair<Uri, String>?>(null)
+        private set
+
     val atStart: Boolean get() = path == start
 
     init {
@@ -118,21 +122,36 @@ class FilesModel(private val context: Application, private val serverId: String)
         }
     }
 
-    fun upload(source: Uri) = work {
+    /** Uploads [source] into the open folder. A file with the same name is replaced only with [replace]. */
+    fun upload(source: Uri, replace: Boolean = false) = work {
         val dir = requireNotNull(path)
         val resolver = context.contentResolver
-        val (name, size) = resolver.query(source, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { c ->
+        val (shown, size) = resolver.query(source, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { c ->
             if (c.moveToFirst()) c.getString(0) to c.getLong(1) else null
         } ?: ("upload" to 0L)
+        // The provider supplies the name: keep only its last part, and never "." or "..".
+        val name = shown.orEmpty().substringAfterLast('/').takeUnless { it.isBlank() || it == "." || it == ".." } ?: "upload"
+        val target = Sftp.join(dir, name)
+        if (!replace && sftp().exists(target)) {
+            conflict = source to name
+            return@work
+        }
         transfer = 0L to size
         try {
             resolver.openInputStream(source)?.use { input ->
-                sftp().upload(input, Sftp.join(dir, name.substringAfterLast('/'))) { done -> transfer = done to size }
+                sftp().upload(input, target) { done -> transfer = done to size }
             }
         } finally {
             transfer = null
         }
         list(dir)
+    }
+
+    /** The answer to [conflict]: replace the file on the server, or keep it. */
+    fun answerConflict(replace: Boolean) {
+        val (source, _) = conflict ?: return
+        conflict = null
+        if (replace) upload(source, replace = true)
     }
 
     /** The open SFTP channel; opens it (and a connection) when there is none or it dropped. Runs on [sftpThread]. */
@@ -290,6 +309,16 @@ fun FilesScreen(serverId: String, nav: Navigator) {
     }
     renaming?.let { entry ->
         NameDialog("Rename", entry.name, onDone = { name -> renaming = null; if (name != null && name != entry.name) model.rename(entry, name) })
+    }
+    model.conflict?.let { (_, name) ->
+        ConfirmDialog(
+            title = "Replace $name?",
+            text = "A file with this name is in this folder. The upload replaces it on the server.",
+            confirm = "Replace",
+            destructive = true,
+            onConfirm = { model.answerConflict(replace = true) },
+            onDismiss = { model.answerConflict(replace = false) },
+        )
     }
     deleting?.let { entry ->
         ConfirmDialog(

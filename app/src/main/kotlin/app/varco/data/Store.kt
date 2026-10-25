@@ -28,21 +28,36 @@ class Store(dir: File, private val vault: Vault, private val scope: CoroutineSco
     private val file = AtomicFile(File(dir, "store.bin"))
     private val writeLock = Mutex()
     private val pending = AtomicBoolean(false)
+
+    /** False when an unreadable file could not be moved aside: no write may then replace it. */
+    @Volatile private var writable = true
     private val _state = MutableStateFlow(AppState())
     val state: StateFlow<AppState> = _state.asStateFlow()
 
     /** Reads the file. Call once, off the main thread, before the UI shows data. */
     fun load() {
+        val dir = file.baseFile.parentFile
+        val aside = File(dir, UNREADABLE)
+        // An earlier start moved the file aside and nothing was saved since. The cause can be gone now (a
+        // passing Keystore error), so that copy is read again.
+        if (!file.baseFile.exists() && aside.isFile) aside.renameTo(file.baseFile)
         val blob = try {
             file.readFully()
         } catch (_: FileNotFoundException) {
             return
         }
-        // A damaged file or a lost Keystore key must not crash the app. The file moves aside (never
-        // overwritten), so that a passing Keystore error loses no data; the user starts with an empty list.
-        _state.value = runCatching { decode(JSONObject(vault.decryptString(blob))) }.getOrElse {
-            Log.w(TAG, "Store unreadable, kept as $UNREADABLE")
-            file.baseFile.renameTo(File(file.baseFile.parentFile, UNREADABLE))
+        // A damaged file or a lost Keystore key must not crash the app. The file moves aside to a free name,
+        // so that an earlier copy is never overwritten; the user starts with an empty list.
+        _state.value = runCatching { decode(JSONObject(vault.decryptString(blob))) }.getOrElse { e ->
+            val target = generateSequence(0) { it + 1 }
+                .map { File(dir, if (it == 0) UNREADABLE else "$UNREADABLE.$it") }
+                .first { !it.exists() }
+            if (file.baseFile.renameTo(target)) {
+                Log.w(TAG, "Store unreadable (${e.javaClass.simpleName}), kept as ${target.name}")
+            } else {
+                writable = false
+                Log.w(TAG, "Store unreadable (${e.javaClass.simpleName}), not moved; saving is off")
+            }
             AppState()
         }
     }
@@ -63,6 +78,7 @@ class Store(dir: File, private val vault: Vault, private val scope: CoroutineSco
     }
 
     private suspend fun save() = writeLock.withLock {
+        if (!writable) return@withLock
         val bytes = vault.encryptString(encode(_state.value).toString())
         val out = file.startWrite()
         try {
@@ -70,7 +86,7 @@ class Store(dir: File, private val vault: Vault, private val scope: CoroutineSco
             file.finishWrite(out)
         } catch (e: Exception) {
             file.failWrite(out)
-            Log.w(TAG, "Store write failed", e)
+            Log.w(TAG, "Store write failed: ${e.javaClass.simpleName}")
         }
     }
 
