@@ -42,7 +42,8 @@
 - Ed25519 import: Android takes Ed25519 imports only as algorithm "EC" with an `EdECPrivateKey`, and
   `KeyStore.PrivateKeyEntry` needs the same algorithm name on the certificate key. `ChipKeys.EcNamed` wraps
   the real self-signed Ed25519 certificate and only renames the key algorithm.
-- No logs of terminal data, the Termux engine's log calls are dropped. Clipboard copies are marked sensitive.
+- No logs of terminal data, the Termux engine's log calls are dropped. Terminal copies are marked sensitive and
+  cleared after 60 s (`SensitiveClip`, the same mechanism as Ombra).
   OSC 52 from servers is off by default. The keyboard gets `IME_FLAG_NO_PERSONALIZED_LEARNING`.
 - `allowBackup=false` and data-extraction rules exclude everything.
 

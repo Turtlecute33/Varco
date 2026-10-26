@@ -1,10 +1,8 @@
 package app.varco.ui.components
 
 import android.content.ClipData
-import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
-import android.os.PersistableBundle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -188,9 +186,8 @@ fun ConfirmDialog(
     )
 }
 
-/** Copies [text]; [sensitive] hides it from the clipboard preview. */
+/** Copies [text]; a [sensitive] copy is hidden from the clipboard preview and cleared after a minute. */
 fun copy(context: Context, text: String, sensitive: Boolean) {
-    val clip = ClipData.newPlainText("Varco", text)
-    if (sensitive) clip.description.extras = PersistableBundle().apply { putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true) }
-    context.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
+    if (sensitive) SensitiveClip.copy(context, "Varco", text)
+    else context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Varco", text))
 }

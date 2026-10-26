@@ -1,14 +1,12 @@
 package app.varco.ssh
 
-import android.content.ClipData
-import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
-import android.os.PersistableBundle
 import android.os.VibrationEffect
 import android.os.VibratorManager
 import app.varco.data.Server
 import app.varco.data.Store
+import app.varco.ui.components.SensitiveClip
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
 import com.termux.view.TerminalView
@@ -65,10 +63,8 @@ class Sessions(private val context: Context, private val store: Store, private v
 
         override fun onCopyTextToClipboard(session: TerminalSession, text: String, fromServer: Boolean) {
             if (fromServer && !store.state.value.settings.serverClipboard) return
-            val clip = ClipData.newPlainText("Terminal", text)
-            // Hides the text from the clipboard preview: terminal output often holds secrets.
-            clip.description.extras = PersistableBundle().apply { putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true) }
-            context.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
+            // Terminal output often holds secrets: hidden from the clipboard preview and cleared after a minute.
+            SensitiveClip.copy(context, "Terminal", text)
         }
 
         override fun onPasteTextFromClipboard(session: TerminalSession) {

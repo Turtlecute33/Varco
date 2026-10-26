@@ -41,14 +41,11 @@ class Store(dir: File, private val vault: Vault, private val scope: CoroutineSco
         // An earlier start moved the file aside and nothing was saved since. The cause can be gone now (a
         // passing Keystore error), so that copy is read again.
         if (!file.baseFile.exists() && aside.isFile) aside.renameTo(file.baseFile)
-        val blob = try {
-            file.readFully()
-        } catch (_: FileNotFoundException) {
-            return
-        }
-        // A damaged file or a lost Keystore key must not crash the app. The file moves aside to a free name,
-        // so that an earlier copy is never overwritten; the user starts with an empty list.
-        _state.value = runCatching { decode(JSONObject(vault.decryptString(blob))) }.getOrElse { e ->
+        // A read error, a damaged file or a lost Keystore key must not crash the app. The file moves aside to a
+        // free name, so that an earlier copy is never overwritten; the user starts with an empty list.
+        _state.value = runCatching { decode(JSONObject(vault.decryptString(file.readFully()))) }.getOrElse { e ->
+            // No file yet: the first start. A file that exists but cannot be opened is kept like a damaged one.
+            if (e is FileNotFoundException && !file.baseFile.exists()) return
             val target = generateSequence(0) { it + 1 }
                 .map { File(dir, if (it == 0) UNREADABLE else "$UNREADABLE.$it") }
                 .first { !it.exists() }

@@ -17,7 +17,8 @@ A private, minimal SSH client and terminal for Android.
   Nord, Gruvbox, One Dark, Rosé Pine, Solarized, Termux). The app colours follow the terminal scheme.
 - **Privacy:** no analytics, no network use except SSH, no backups. All data is in one file, encrypted with
   a Keystore key. Screenshots and the Recents preview are blocked by default. The keyboard does not learn
-  what you type. Servers cannot set the clipboard unless you allow it. Optional app lock.
+  what you type. Servers cannot set the clipboard unless you allow it. Terminal copies are cleared after
+  1 minute. Optional app lock.
 
 ## Import from Termux
 

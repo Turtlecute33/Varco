@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import app.varco.term.Schemes
+import app.varco.ui.components.SensitiveClip
 import app.varco.ui.lock.LockScreen
 import app.varco.ui.nav.AppNav
 import app.varco.ui.nav.Navigator
@@ -71,6 +72,13 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         if (!isChangingConfigurations) app.appLock.onBackground()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Only the focused app can read the clipboard: a secret copied before the app went to the
+        // background is cleared now, if its minute is over.
+        if (hasFocus) SensitiveClip.clearIfDue(this)
     }
 
     /** Blocks screenshots, screen recording and the Recents preview: terminals show secrets. */
