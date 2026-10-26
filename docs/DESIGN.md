@@ -5,7 +5,7 @@
 | Area | Decision |
 |---|---|
 | Platform | Kotlin, Jetpack Compose, Material 3 Expressive, minSdk 35, target/compile 37 |
-| Release | Sideload + GitHub. Private repo, GPL-3.0. |
+| Release | Sideload + GitHub. Public repo, GPL-3.0. |
 | SSH | mwiede JSch + Bouncy Castle (lightweight classes only, no provider registration). |
 | Terminal | Termux `terminal-emulator` + `terminal-view` v0.118.3, copied into `:terminal` and changed for remote byte streams (see `terminal/NOTICE.md`). |
 | YubiKey | YubiKit `android` + `piv`. PIV only. |
