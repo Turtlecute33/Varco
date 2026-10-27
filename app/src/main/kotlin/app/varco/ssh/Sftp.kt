@@ -44,9 +44,41 @@ class Sftp(connection: SshConnection) : AutoCloseable {
     fun download(path: String, out: OutputStream, progress: (Long) -> Unit) =
         channel.get(lit(path), out, Monitor(progress))
 
-    /** Replaces a file at [path]: check [exists] first, so that the user can decide. */
-    fun upload(input: InputStream, path: String, progress: (Long) -> Unit) =
-        channel.put(input, lit(path), Monitor(progress), ChannelSftp.OVERWRITE)
+    /**
+     * Replaces a file at [path]: check [exists] first, so that the user can decide. With posix-rename, the data
+     * goes to a part file that then takes the place of the file in one step, so that a cut-off upload keeps the
+     * old file. Else, or when the folder is not writable, the upload writes into the file itself.
+     */
+    fun upload(input: InputStream, path: String, progress: (Long) -> Unit) {
+        if (channel.getExtension(POSIX_RENAME) != "1" || !uploadByRename(input, path, progress)) {
+            channel.put(input, lit(path), Monitor(progress), ChannelSftp.OVERWRITE)
+        }
+    }
+
+    /**
+     * Uploads to ".<name>.varco-part" next to the file, copies the mode, and renames it over the file. A link
+     * stays a link: its target gets the data. False, before any data is read, when this is not possible.
+     */
+    private fun uploadByRename(input: InputStream, path: String, progress: (Long) -> Unit): Boolean {
+        val isLink = runCatching { channel.lstat(lit(path)).isLink }.getOrDefault(false)
+        // realpath takes the raw path: it does no glob.
+        val target = if (isLink) runCatching { channel.realpath(path) }.getOrNull() ?: return false else path
+        val part = join(parent(target), ".${target.substringAfterLast('/')}.varco-part")
+        // A part file left by a cut-off upload, or a link in its place: remove it, so that no data goes through a link.
+        runCatching { channel.rm(lit(part)) }
+        var sent = false
+        try {
+            channel.put(input, lit(part), Monitor { sent = true; progress(it) }, ChannelSftp.OVERWRITE)
+            runCatching { channel.chmod(channel.stat(lit(target)).permissions and 0xfff, lit(part)) }
+            channel.rename(lit(part), lit(target))
+        } catch (e: Exception) {
+            runCatching { channel.rm(lit(part)) }
+            // No write access to the folder and no data read: the caller writes into the file itself.
+            if (!sent && e is SftpException && e.id == ChannelSftp.SSH_FX_PERMISSION_DENIED) return false
+            throw e
+        }
+        return true
+    }
 
     /** True when [path] exists. A link counts, also a broken one: an upload writes through it. */
     fun exists(path: String): Boolean = try {
@@ -81,6 +113,9 @@ class Sftp(connection: SshConnection) : AutoCloseable {
 
         /** Links that [list] checks for a folder target. */
         private const val LINK_STATS = 50
+
+        /** The SFTP extension that renames over an existing file in one step. */
+        private const val POSIX_RENAME = "posix-rename@openssh.com"
 
         fun join(dir: String, name: String) = if (dir.endsWith('/')) dir + name else "$dir/$name"
 
