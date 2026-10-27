@@ -135,7 +135,7 @@ private fun HostKeyDialog(ask: Ask.HostKey) {
 @Composable
 private fun PasswordDialog(ask: Ask.Password) {
     var password by remember(ask) { mutableStateOf("") }
-    var save by remember(ask) { mutableStateOf(false) }
+    var save by remember(ask) { mutableStateOf(ask.saved) }
     val focus = remember { FocusRequester() }
     AlertDialog(
         onDismissRequest = {},

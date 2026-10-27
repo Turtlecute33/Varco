@@ -21,8 +21,12 @@ sealed class Ask<T> {
     class HostKey(override val server: String, val host: String, val port: Int, val type: String,
                   val fingerprint: String, val changed: Boolean) : Ask<Boolean>()
 
-    /** Password; null = cancel. [save] in the answer is the "Save password" box. */
-    class Password(override val server: String, val user: String, val retry: Boolean) : Ask<Password.Reply?>() {
+    /**
+     * Password; null = cancel. [save] in the answer is the "Save password" box. [saved] = the saved password
+     * failed: the box starts on, so that the new password replaces it.
+     */
+    class Password(override val server: String, val user: String, val retry: Boolean, val saved: Boolean) :
+        Ask<Password.Reply?>() {
         class Reply(val password: String, val save: Boolean)
     }
 

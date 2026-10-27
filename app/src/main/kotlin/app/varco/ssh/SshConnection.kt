@@ -77,7 +77,9 @@ class SshConnection(private val env: SshEnv, val server: Server) {
         }
         session = s
         s.connect(CONNECT_TIMEOUT_MS)
-        auth.newPassword?.let { password ->
+        // A saved password that failed is replaced, or removed when "Save password" is off: it must not fail again.
+        if (auth.newPassword != null || auth.savedFailed) {
+            val password = auth.newPassword
             env.store.update { st -> st.copy(servers = st.servers.map { if (it.id == server.id) it.copy(password = password) else it }) }
         }
     }
@@ -158,6 +160,10 @@ class SshConnection(private val env: SshEnv, val server: Server) {
         var newPassword: String? = null
             private set
 
+        /** The saved password failed and the user typed another one. */
+        var savedFailed = false
+            private set
+
         override fun getPassphrase(): String? = null
         override fun getPassword(): String? = password
         override fun promptPassphrase(message: String?) = false
@@ -175,9 +181,11 @@ class SshConnection(private val env: SshEnv, val server: Server) {
                 password = server.password
                 return true
             }
-            val reply = ask(Ask.Password(server.name, server.user, retry = asked++ > 0 || savedTried)) ?: return false
+            val reply = ask(Ask.Password(server.name, server.user, retry = asked++ > 0 || savedTried, saved = savedTried))
+                ?: return false
             password = reply.password
             newPassword = if (reply.save) reply.password else null
+            savedFailed = savedTried
             return true
         }
 
