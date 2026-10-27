@@ -112,7 +112,11 @@ fun SettingsScreen(nav: Navigator) {
                 },
                 modifier = Modifier.padding(horizontal = 20.dp),
             )
-            if (Importer.fontFile(context).exists()) {
+            // A file check off the main thread, again after an import (the import sets the font to custom).
+            val hasFont by produceState(s.font == Importer.FONT_CUSTOM, s.font) {
+                value = withContext(Dispatchers.IO) { Importer.fontFile(context).exists() }
+            }
+            if (hasFont) {
                 ListRow(title = "JetBrains Mono", onClick = { set { it.copy(font = "jetbrains-mono") } }) {
                     RadioButton(selected = s.font != Importer.FONT_CUSTOM, onClick = { set { it.copy(font = "jetbrains-mono") } })
                 }

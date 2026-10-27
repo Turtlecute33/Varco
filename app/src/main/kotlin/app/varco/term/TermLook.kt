@@ -21,6 +21,7 @@ object TermLook {
         sessions.forEach { it.emulator?.mColors?.reset() }
     }
 
+    /** The imported font when the settings select it, else JetBrains Mono. Reads a file: not on the main thread. */
     fun typeface(context: Context, settings: Settings): Typeface {
         val file = Importer.fontFile(context)
         if (settings.font == Importer.FONT_CUSTOM && file.exists()) {

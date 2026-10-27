@@ -2,6 +2,7 @@ package app.varco
 
 import android.app.Application
 import android.content.Context
+import android.os.StrictMode
 import app.varco.data.Store
 import app.varco.data.Vault
 import app.varco.importer.Importer
@@ -41,6 +42,7 @@ class VarcoApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        if (BuildConfig.DEBUG) enableStrictMode()
         store = Store(filesDir, Vault(), scope)
         sessions = Sessions(this, store, SshEnv(store, chip, prompts), scope)
         appLock = AppLock({ store.state.value.settings.appLock }, { store.state.value.settings.lockAfter })
@@ -54,6 +56,12 @@ class VarcoApp : Application() {
                 if (open) SessionService.start(this@VarcoApp)
             }
         }
+    }
+
+    /** Debug builds log disk and network work on the main thread, leaks and unsafe intents. */
+    private fun enableStrictMode() {
+        StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder().detectAll().penaltyLog().build())
+        StrictMode.setVmPolicy(StrictMode.VmPolicy.Builder().detectAll().penaltyLog().build())
     }
 }
 

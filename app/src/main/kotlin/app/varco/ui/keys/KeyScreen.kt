@@ -38,6 +38,8 @@ import app.varco.ui.components.ConfirmDialog
 import app.varco.ui.components.Icons
 import app.varco.ui.components.copy
 import app.varco.ui.nav.Navigator
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /** One key: public key to copy or share (for authorized_keys), name, delete. */
 @Composable
@@ -118,7 +120,8 @@ fun KeyScreen(id: String, nav: Navigator) {
             confirm = "Delete",
             destructive = true,
             onConfirm = {
-                key.alias?.let { alias -> runCatching { app.chip.delete(alias) } }
+                // A Keystore call: off the main thread, in the app scope, so that it ends after this screen closes.
+                key.alias?.let { alias -> app.scope.launch(Dispatchers.IO) { runCatching { app.chip.delete(alias) } } }
                 app.store.update { st ->
                     st.copy(
                         keys = st.keys.filterNot { it.id == key.id },

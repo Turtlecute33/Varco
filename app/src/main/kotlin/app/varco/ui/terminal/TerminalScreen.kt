@@ -62,6 +62,8 @@ import app.varco.ui.components.SectionHeader
 import app.varco.ui.nav.Navigator
 import app.varco.ui.nav.Route
 import com.termux.view.TerminalView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** The full-screen terminal of the current tab, with the extra-keys bar above the keyboard. */
 @Composable
@@ -135,7 +137,6 @@ fun TerminalScreen(nav: Navigator) {
                         val px = fontPx(settings.fontSize, resources.displayMetrics)
                         setTextSize(px)
                         tag = px
-                        setTypeface(TermLook.typeface(ctx, settings))
                         view = this
                         app.sessions.view = this
                     }
@@ -175,8 +176,12 @@ fun TerminalScreen(nav: Navigator) {
         )
     }
 
-    // The font file can change in Settings while this screen is in the back stack.
-    LaunchedEffect(settings.font) { view?.setTypeface(TermLook.typeface(context, settings)) }
+    // The font is read off the main thread, for a new view and after a font change in Settings. Until then,
+    // the view has the built-in monospace font.
+    LaunchedEffect(view, settings.font) {
+        val v = view ?: return@LaunchedEffect
+        v.setTypeface(withContext(Dispatchers.IO) { TermLook.typeface(context, settings) })
+    }
     LaunchedEffect(shell.id) { showKeyboard() }
     DisposableEffect(Unit) {
         onDispose {
