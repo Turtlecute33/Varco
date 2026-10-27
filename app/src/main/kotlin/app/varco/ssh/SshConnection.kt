@@ -221,15 +221,12 @@ class SshConnection(private val env: SshEnv, val server: Server) {
             val state = env.store.state.value
             val own = state.knownHosts.filter { it.host == host && it.port == server.port }
             val imported = KnownHosts.parse(state.importedKnownHosts).filter { KnownHosts.matches(it.hosts, host, server.port) }
-            if (imported.any { it.revoked && it.key.contentEquals(key) }) {
+            val verdict = KnownHosts.verdict(own, imported, type, key)
+            if (verdict == KnownHosts.Verdict.REVOKED) {
                 throw IllegalStateException("The host key of ${server.host} is marked as revoked in known_hosts")
             }
-            val trusted = own.any { it.type == type && it.key == encoded } ||
-                (own.none { it.type == type } && imported.any { !it.revoked && it.type == type && it.key.contentEquals(key) })
-            // Any other known key counts: a server that suddenly offers only another key type is suspect too
-            // (jsch asks for the known types first, see getHostKey).
-            val changed = !trusted && (own.isNotEmpty() || imported.any { !it.revoked })
-            if (!trusted) {
+            if (verdict != KnownHosts.Verdict.TRUSTED) {
+                val changed = verdict == KnownHosts.Verdict.CHANGED
                 val yes = ask(Ask.HostKey(server.name, server.host, server.port, type, SshWire.fingerprint(key), changed))
                 if (!yes) return if (changed) HostKeyRepository.CHANGED else HostKeyRepository.NOT_INCLUDED
             }

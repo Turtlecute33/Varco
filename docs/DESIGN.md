@@ -53,7 +53,8 @@
 
 ## Tests
 
-- JVM: `./gradlew :app:testDebugUnitTest` (config, colours, known_hosts, key formats, PIV padding, store codec).
+- JVM: `./gradlew :app:testDebugUnitTest` (config, colours, known_hosts, the host key trust rule, app lock timing,
+  terminal session queues and transport change, key formats, PIV padding, store codec).
 - Live test (2026-10-17, API 35 emulator against OpenSSH 10.3 on localhost): Keystore Ed25519 key, host key
   change by key-type switch (MITM case), prompt closed with its session, SFTP with symlinks and upload,
   imported Ed25519 (with passphrase) / RSA-3072 / ECDSA keys, per-use auth with device PIN, app lock,

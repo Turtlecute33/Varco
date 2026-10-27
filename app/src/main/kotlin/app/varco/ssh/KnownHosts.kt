@@ -1,5 +1,6 @@
 package app.varco.ssh
 
+import app.varco.data.KnownHost
 import app.varco.keys.SshWire
 import java.util.Base64
 import javax.crypto.Mac
@@ -12,6 +13,27 @@ import javax.crypto.spec.SecretKeySpec
  */
 object KnownHosts {
     class Line(val hosts: String, val type: String, val key: ByteArray, val revoked: Boolean)
+
+    /** The trust decision for a host key (DESIGN, Security rules). */
+    enum class Verdict { TRUSTED, NEW, CHANGED, REVOKED }
+
+    /**
+     * The trust rule for the host key [key] of type [type]. [own] are the keys that the user trusted for this
+     * host and port, [imported] are the known_hosts lines that match them. An own key of the same type wins over
+     * imported lines. A key that is not trusted is CHANGED when any other key is known, also of another type:
+     * a server that suddenly offers only another key type is suspect too (jsch asks for the known types first).
+     */
+    fun verdict(own: List<KnownHost>, imported: List<Line>, type: String, key: ByteArray): Verdict {
+        if (imported.any { it.revoked && it.key.contentEquals(key) }) return Verdict.REVOKED
+        val encoded = Base64.getEncoder().encodeToString(key)
+        val trusted = own.any { it.type == type && it.key == encoded } ||
+            (own.none { it.type == type } && imported.any { !it.revoked && it.type == type && it.key.contentEquals(key) })
+        return when {
+            trusted -> Verdict.TRUSTED
+            own.isNotEmpty() || imported.any { !it.revoked } -> Verdict.CHANGED
+            else -> Verdict.NEW
+        }
+    }
 
     fun parse(text: String): List<Line> = text.lineSequence().mapNotNull(::parseLine).toList()
 
