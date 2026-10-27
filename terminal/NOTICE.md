@@ -23,3 +23,4 @@ Changes made for Varco:
   through `TerminalEmulator.paste()`, as the menu paste: ESC and C1 are removed, and bracketed paste is used when the shell asks for it.
 - Fixes from termux-app master: `30ebb2dee3` (the termcap names `kN` and `kP` give Page Down and Page Up),
   `47c473f9be` (an erase to the end of a line clears its line wrap), `5532cc4f88` (`TerminalRow.mSpaceUsed` is an `int`).
+- `TerminalBuffer.resize()` with a column change makes only the screen rows, not a row for each transcript line.

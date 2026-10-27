@@ -234,7 +234,9 @@ public final class TerminalBuffer {
             // Copy away old state and update new:
             TerminalRow[] oldLines = mLines;
             mLines = new TerminalRow[newTotalRows];
-            for (int i = 0; i < newTotalRows; i++)
+            // Only the screen rows: the copy below fills them, and scrollDownOneLine() makes each new row.
+            // The other rows stay null, as after the constructor (Varco: no full transcript allocation).
+            for (int i = 0; i < Math.min(newRows, newTotalRows); i++)
                 mLines[i] = new TerminalRow(newColumns, currentStyle);
 
             final int oldActiveTranscriptRows = mActiveTranscriptRows;
