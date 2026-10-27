@@ -27,14 +27,19 @@ class Sftp(connection: SshConnection) : AutoCloseable {
             if (e.filename != "." && e.filename != "..") found += e
             ChannelSftp.LsEntrySelector.CONTINUE
         }
+        var stats = 0
         return found.map { e ->
             val a = e.attrs
             val full = join(path, e.filename)
-            // A link to a folder opens like a folder.
-            val isDir = a.isDir || (a.isLink && runCatching { channel.stat(lit(full)).isDir }.getOrDefault(false))
+            // A link to a folder opens like a folder. Each link costs a round trip, so only the first LINK_STATS
+            // are checked here; the others show as files until a tap checks them (isDirLink).
+            val isDir = a.isDir || (a.isLink && stats++ < LINK_STATS && isDirLink(full))
             Entry(e.filename, full, isDir, a.isLink, a.size, a.mTime * 1000L)
         }.sortedWith(compareBy<Entry>({ !it.isDir }, { it.name.lowercase() }))
     }
+
+    /** True when the link at [path] goes to a folder. A broken link counts as a file. */
+    fun isDirLink(path: String): Boolean = runCatching { channel.stat(lit(path)).isDir }.getOrDefault(false)
 
     fun download(path: String, out: OutputStream, progress: (Long) -> Unit) =
         channel.get(lit(path), out, Monitor(progress))
@@ -73,6 +78,9 @@ class Sftp(connection: SshConnection) : AutoCloseable {
 
     companion object {
         private const val TIMEOUT_MS = 15_000
+
+        /** Links that [list] checks for a folder target. */
+        private const val LINK_STATS = 50
 
         fun join(dir: String, name: String) = if (dir.endsWith('/')) dir + name else "$dir/$name"
 

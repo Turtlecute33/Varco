@@ -93,6 +93,11 @@ class FilesModel(private val context: Application, private val serverId: String)
 
     fun up() = path?.let { open(Sftp.parent(it)) }
 
+    /** A tap on a link that is not shown as a folder ([Sftp.list] checks only some): open its folder, else [onFile]. */
+    fun openLink(entry: Sftp.Entry, onFile: () -> Unit) = work {
+        if (sftp().isDirLink(entry.path)) list(entry.path) else withContext(Dispatchers.Main) { onFile() }
+    }
+
     /** Lists the open folder again; after a failed first listing, the home folder. */
     fun refresh() {
         val dir = path
@@ -282,7 +287,13 @@ fun FilesScreen(serverId: String, nav: Navigator) {
                             },
                             icon = if (entry.isDir) Icons.Folder else Icons.File,
                             iconTint = if (entry.isDir) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            onClick = { if (entry.isDir) model.open(entry.path) else menu = true },
+                            onClick = {
+                                when {
+                                    entry.isDir -> model.open(entry.path)
+                                    entry.isLink -> model.openLink(entry) { menu = true }
+                                    else -> menu = true
+                                }
+                            },
                         ) {
                             Box {
                                 IconButton(onClick = { menu = true }) { Icon(Icons.More, contentDescription = "More") }
