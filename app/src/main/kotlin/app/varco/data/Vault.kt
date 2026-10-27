@@ -2,7 +2,6 @@ package app.varco.data
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import android.security.keystore.StrongBoxUnavailableException
 import java.security.GeneralSecurityException
 import java.security.KeyStore
 import java.security.ProviderException
@@ -47,7 +46,8 @@ class Vault {
         (store.getKey(ALIAS, null) as SecretKey?)?.let { return it }
         return try {
             generateKey(strongBox = true)
-        } catch (_: StrongBoxUnavailableException) {
+        } catch (_: Exception) {
+            // Some StrongBox chips fail with other errors than StrongBoxUnavailableException (as in ChipKeys.generate).
             generateKey(strongBox = false)
         }
     }

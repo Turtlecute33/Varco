@@ -76,7 +76,11 @@ class Store(dir: File, private val vault: Vault, private val scope: CoroutineSco
 
     private suspend fun save() = writeLock.withLock {
         if (!writable) return@withLock
-        val bytes = vault.encryptString(encode(_state.value).toString())
+        // A Keystore error must not end the app; the next change writes the state again.
+        val bytes = runCatching { vault.encryptString(encode(_state.value).toString()) }.getOrElse { e ->
+            Log.w(TAG, "Store encrypt failed: ${e.javaClass.simpleName}")
+            return@withLock
+        }
         val out = file.startWrite()
         try {
             out.write(bytes)
