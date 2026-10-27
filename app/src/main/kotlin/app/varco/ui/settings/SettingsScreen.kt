@@ -41,6 +41,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -221,7 +224,14 @@ private fun SchemeCard(scheme: Scheme, selected: Boolean, onClick: () -> Unit, o
         modifier = Modifier
             .width(132.dp)
             .clip(RoundedCornerShape(16.dp))
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            // TalkBack: a radio option that reads "selected", and names the long press of an imported scheme.
+            .semantics { this.selected = selected }
+            .combinedClickable(
+                role = Role.RadioButton,
+                onLongClickLabel = if (onLongClick != null) "Remove" else null,
+                onLongClick = onLongClick,
+                onClick = onClick,
+            ),
     ) {
         Column(Modifier.padding(12.dp)) {
             Text(
@@ -229,6 +239,8 @@ private fun SchemeCard(scheme: Scheme, selected: Boolean, onClick: () -> Unit, o
                 color = fg,
                 fontFamily = FontFamily.Monospace,
                 fontSize = 12.sp,
+                // Only a preview: TalkBack reads the scheme name.
+                modifier = Modifier.clearAndSetSemantics {},
             )
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
