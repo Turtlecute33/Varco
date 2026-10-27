@@ -10,6 +10,7 @@
 | Terminal | Termux `terminal-emulator` + `terminal-view` v0.118.3, copied into `:terminal` and changed for remote byte streams (see `terminal/NOTICE.md`). |
 | YubiKey | YubiKit `android` + `piv`. PIV only. |
 | Storage | One file, `store.bin`: JSON encrypted with AES-256-GCM by a Keystore key (`Vault`). No database. |
+| Start | AndroidX `profileinstaller` installs the Compose baseline profiles on sideloaded installs (faster first start). |
 | Not in v1 | Port forwarding, jump hosts, Mosh, agent forwarding, tmux auto-attach, FIDO2 security keys, per-server themes. |
 
 ## Modules and packages

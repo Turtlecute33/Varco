@@ -28,7 +28,6 @@ android {
         targetSdk = 37
         versionCode = 3
         versionName = "0.1.2"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -119,6 +118,8 @@ dependencies {
     implementation(libs.lifecycle.viewmodel.navigation3)
     implementation(libs.navigation3.runtime)
     implementation(libs.navigation3.ui)
+    // Installs the Compose baseline profiles on sideloaded installs: faster first start and scrolling.
+    implementation(libs.profileinstaller)
 
     implementation(libs.jsch)
     implementation(libs.bouncycastle)
@@ -130,7 +131,4 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     // org.json is part of Android; JVM unit tests need a real copy.
     testImplementation(libs.json)
-    androidTestImplementation(libs.androidx.test.runner)
-    androidTestImplementation(libs.junit)
-    androidTestImplementation(kotlin("test-junit"))
 }
