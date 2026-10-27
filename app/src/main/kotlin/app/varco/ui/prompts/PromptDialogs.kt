@@ -47,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.varco.app
 import app.varco.ssh.Ask
+import app.varco.ssh.printable
 import app.varco.ui.components.Icons
 import com.yubico.yubikit.core.smartcard.SmartCardConnection
 import kotlinx.coroutines.delay
@@ -167,21 +168,22 @@ private fun InteractiveDialog(ask: Ask.Interactive) {
     val focus = remember { FocusRequester() }
     AlertDialog(
         onDismissRequest = {},
-        title = { Text(ask.name.ifBlank { ask.server }) },
+        // The title is Varco's own and names the server: server text must not look like a Varco dialog.
+        title = { Text("${ask.server} asks") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (ask.instruction.isNotBlank()) Text(ask.instruction)
+                Text("Message from the server", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (ask.name.isNotBlank()) Text(clean(ask.name))
+                if (ask.instruction.isNotBlank()) Text(clean(ask.instruction))
                 ask.prompts.forEachIndexed { i, field ->
                     OutlinedTextField(
                         value = answers[i],
                         onValueChange = { answers[i] = it },
-                        label = { Text(field.text.trim().removeSuffix(":")) },
+                        label = { Text(clean(field.text).trim().removeSuffix(":")) },
                         singleLine = true,
                         visualTransformation = if (field.echo) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = if (field.echo) KeyboardType.Ascii else KeyboardType.Password,
-                            autoCorrectEnabled = false,
-                        ),
+                        // Password type also for visible codes: the keyboard does not learn them.
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
                         modifier = Modifier.fillMaxWidth().then(if (i == 0) Modifier.focusRequester(focus) else Modifier),
                     )
                 }
@@ -192,6 +194,10 @@ private fun InteractiveDialog(ask: Ask.Interactive) {
     )
     LaunchedEffect(ask) { if (ask.prompts.isNotEmpty()) focus.requestFocus() }
 }
+
+/** Server text for a dialog: no control characters, no bidi overrides or isolates, at most 500 characters. */
+internal fun clean(text: String): String =
+    printable(text).filterNot { it in '\u202a'..'\u202e' || it in '\u2066'..'\u2069' }.take(500)
 
 /** A dialog for one secret (PIN or passphrase). The answer is a CharArray that the caller wipes. */
 @Composable
