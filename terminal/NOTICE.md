@@ -19,3 +19,5 @@ Changes made for Varco:
 - `TerminalView` is marked accessibility-data-sensitive, so that only accessibility tools can read the screen text.
 - `TerminalEmulator.mCellWidthPixels` / `mCellHeightPixels` are package-visible.
 - XTGETTCAP: a request name that is not hex gets no reply, so server bytes never come back as typed input.
+- `TerminalView.commitText()` sends a keyboard paste (more than one character, with a line break or ESC)
+  through `TerminalEmulator.paste()`, as the menu paste: ESC and C1 are removed, and bracketed paste is used when the shell asks for it.

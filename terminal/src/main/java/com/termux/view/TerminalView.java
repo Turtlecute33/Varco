@@ -357,9 +357,26 @@ public final class TerminalView extends View {
                 if (mEmulator == null) return true;
 
                 Editable content = getEditable();
-                sendTextToTerminal(content);
+                if (isPaste(content)) {
+                    // Varco: a keyboard paste takes the paste path of the menu. It removes ESC and C1. When the
+                    // shell asks for bracketed paste, the pasted lines wait for Enter and do not run at once.
+                    stopTextSelectionMode();
+                    mEmulator.paste(content.toString());
+                } else {
+                    sendTextToTerminal(content);
+                }
                 content.clear();
                 return true;
+            }
+
+            /** Several characters with a line break or ESC: a paste (keyboard clipboard), not typing. */
+            boolean isPaste(CharSequence text) {
+                if (text.length() < 2) return false;
+                for (int i = 0; i < text.length(); i++) {
+                    char c = text.charAt(i);
+                    if (c == '\n' || c == '\r' || c == 27) return true;
+                }
+                return false;
             }
 
             @Override
