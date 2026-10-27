@@ -965,7 +965,8 @@ public final class TerminalEmulator {
                     // the meaning of e.g. "ku", "kd", "kr", "kl"
 
                     for (String part : dcs.substring(2).split(";")) {
-                        if (part.length() % 2 == 0) {
+                        // Varco: xterm names are hex only; never echo other server bytes back as typed input.
+                        if (part.length() % 2 == 0 && part.matches("[0-9A-Fa-f]*")) {
                             StringBuilder transBuffer = new StringBuilder();
                             char c;
                             for (int i = 0; i < part.length(); i += 2) {

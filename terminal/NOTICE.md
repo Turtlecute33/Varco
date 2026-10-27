@@ -18,3 +18,4 @@ Changes made for Varco:
 - `TerminalView` asks the keyboard not to learn typed text (`IME_FLAG_NO_PERSONALIZED_LEARNING`).
 - `TerminalView` is marked accessibility-data-sensitive, so that only accessibility tools can read the screen text.
 - `TerminalEmulator.mCellWidthPixels` / `mCellHeightPixels` are package-visible.
+- XTGETTCAP: a request name that is not hex gets no reply, so server bytes never come back as typed input.
