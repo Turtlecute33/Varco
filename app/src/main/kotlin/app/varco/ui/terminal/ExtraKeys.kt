@@ -30,6 +30,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,6 +63,8 @@ interface KeySink {
  * ← ↓ ↑ → - / | ⚡
  * Arrows repeat while held. A long press on "-", "/" and "|" sends "_", "\" and "&". A tap on CTRL or ALT
  * applies it to the next key; a long press locks it.
+ * Each key is a button for TalkBack, with a spoken name, the long press as an action and the CTRL/ALT state.
+ * Rows are 48 dp high (touch target guideline).
  */
 @Composable
 fun ExtraKeys(
@@ -78,21 +87,21 @@ fun ExtraKeys(
             .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Chip(chipLabel, chipDot, fg, keyBg, onChip, Modifier.weight(2.2f))
-            Key("ESC", fg, keyBg, onTap = { sink.key(KeyEvent.KEYCODE_ESCAPE) })
-            Key("TAB", fg, keyBg, onTap = { sink.key(KeyEvent.KEYCODE_TAB) })
-            Mod("CTRL", modifiers.ctrl, fg, keyBg, accent, bg)
-            Mod("ALT", modifiers.alt, fg, keyBg, accent, bg)
+            Key("ESC", "Escape", fg, keyBg, onTap = { sink.key(KeyEvent.KEYCODE_ESCAPE) })
+            Key("TAB", "Tab", fg, keyBg, onTap = { sink.key(KeyEvent.KEYCODE_TAB) })
+            Mod("CTRL", "Control", modifiers.ctrl, fg, keyBg, accent, bg)
+            Mod("ALT", "Alt", modifiers.alt, fg, keyBg, accent, bg)
         }
-        Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Key("←", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_LEFT) })
-            Key("↓", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_DOWN) })
-            Key("↑", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_UP) })
-            Key("→", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_RIGHT) })
-            Key("-", fg, keyBg, alt = "_", onTap = { sink.char('-'.code) }, onLong = { sink.char('_'.code) })
-            Key("/", fg, keyBg, alt = "\\", onTap = { sink.char('/'.code) }, onLong = { sink.char('\\'.code) })
-            Key("|", fg, keyBg, alt = "&", onTap = { sink.char('|'.code) }, onLong = { sink.char('&'.code) })
+        Row(Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Key("←", "Left arrow", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_LEFT) })
+            Key("↓", "Down arrow", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_DOWN) })
+            Key("↑", "Up arrow", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_UP) })
+            Key("→", "Right arrow", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_RIGHT) })
+            Key("-", "Minus", fg, keyBg, alt = "_", altSpoken = "Type underscore", onTap = { sink.char('-'.code) }, onLong = { sink.char('_'.code) })
+            Key("/", "Slash", fg, keyBg, alt = "\\", altSpoken = "Type backslash", onTap = { sink.char('/'.code) }, onLong = { sink.char('\\'.code) })
+            Key("|", "Vertical bar", fg, keyBg, alt = "&", altSpoken = "Type ampersand", onTap = { sink.char('|'.code) }, onLong = { sink.char('&'.code) })
             IconKey(fg, keyBg, onSnippets)
         }
     }
@@ -103,9 +112,11 @@ private val KeyShape = RoundedCornerShape(10.dp)
 @Composable
 private fun RowScope.Key(
     label: String,
+    spoken: String,
     fg: Color,
     bg: Color,
     alt: String? = null,
+    altSpoken: String? = null,
     repeat: Boolean = false,
     onTap: () -> Unit,
     onLong: (() -> Unit)? = null,
@@ -120,6 +131,12 @@ private fun RowScope.Key(
             .fillMaxHeight()
             .clip(KeyShape)
             .background(bg)
+            .clearAndSetSemantics {
+                role = Role.Button
+                contentDescription = spoken
+                onClick { tap(); true }
+                if (onLong != null) onLongClick(altSpoken) { long?.invoke(); true }
+            }
             .pointerInput(repeat, onLong != null) {
                 if (repeat) {
                     // Sends once on press, then repeats after 400 ms while the finger stays down.
@@ -161,12 +178,17 @@ private fun RowScope.Key(
 }
 
 @Composable
-private fun RowScope.Mod(label: String, key: ModKey, fg: Color, bg: Color, accent: Color, onAccent: Color) {
+private fun RowScope.Mod(label: String, spoken: String, key: ModKey, fg: Color, bg: Color, accent: Color, onAccent: Color) {
     val view = LocalView.current
     val (keyBg, keyFg) = when (key.mode) {
         ModKey.Mode.OFF -> bg to fg
         ModKey.Mode.ONCE -> lerp(bg, accent, 0.45f) to fg
         ModKey.Mode.LOCKED -> accent to onAccent
+    }
+    val (state, longLabel) = when (key.mode) {
+        ModKey.Mode.OFF -> "Off" to "Lock"
+        ModKey.Mode.ONCE -> "Next key" to "Lock"
+        ModKey.Mode.LOCKED -> "Locked" to "Unlock"
     }
     Box(
         Modifier
@@ -174,6 +196,13 @@ private fun RowScope.Mod(label: String, key: ModKey, fg: Color, bg: Color, accen
             .fillMaxHeight()
             .clip(KeyShape)
             .background(keyBg)
+            .clearAndSetSemantics {
+                role = Role.Button
+                contentDescription = spoken
+                stateDescription = state
+                onClick { key.tap(); true }
+                onLongClick(longLabel) { key.lock(); true }
+            }
             .pointerInput(key) {
                 detectTapGestures(
                     onTap = { view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); key.tap() },
@@ -195,10 +224,15 @@ private fun RowScope.IconKey(fg: Color, bg: Color, onTap: () -> Unit) {
             .fillMaxHeight()
             .clip(KeyShape)
             .background(bg)
+            .clearAndSetSemantics {
+                role = Role.Button
+                contentDescription = "Snippets"
+                onClick { tap(); true }
+            }
             .pointerInput(Unit) { detectTapGestures(onTap = { tap() }) },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Bolt, contentDescription = "Snippets", tint = fg, modifier = Modifier.size(20.dp))
+        Icon(Icons.Bolt, contentDescription = null, tint = fg, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -211,6 +245,11 @@ private fun Chip(label: String, dot: Color, fg: Color, bg: Color, onTap: () -> U
             .widthIn(min = 64.dp)
             .clip(KeyShape)
             .background(bg)
+            .clearAndSetSemantics {
+                role = Role.Button
+                contentDescription = label
+                onClick("Show sessions") { tap(); true }
+            }
             .pointerInput(Unit) { detectTapGestures(onTap = { tap() }) }
             .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
