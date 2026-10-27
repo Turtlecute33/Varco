@@ -2,6 +2,7 @@ package app.varco.ssh
 
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.VibratorManager
 import app.varco.data.Server
@@ -51,6 +52,9 @@ class Sessions(private val context: Context, private val store: Store, private v
 
     private fun shellOf(session: TerminalSession) = _shells.value.firstOrNull { it.term === session }
 
+    /** Time of the last bell vibration (uptime ms). Main thread only. */
+    private var lastBell = 0L
+
     /** Terminal callbacks, on the main thread. Termux's log calls are dropped: Varco keeps no logs. */
     private val client = object : TerminalSessionClient {
         override fun onTextChanged(changedSession: TerminalSession) {
@@ -75,6 +79,10 @@ class Sessions(private val context: Context, private val store: Store, private v
 
         override fun onBell(session: TerminalSession) {
             if (!store.state.value.settings.vibrateOnBell) return
+            // At most one tick per BELL_GAP_MS: output with many BEL bytes must not flood the vibrator.
+            val now = SystemClock.uptimeMillis()
+            if (now - lastBell < BELL_GAP_MS) return
+            lastBell = now
             context.getSystemService(VibratorManager::class.java)?.defaultVibrator
                 ?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
         }
@@ -95,5 +103,10 @@ class Sessions(private val context: Context, private val store: Store, private v
         override fun logVerbose(tag: String?, message: String?) = Unit
         override fun logStackTraceWithMessage(tag: String?, message: String?, e: Exception?) = Unit
         override fun logStackTrace(tag: String?, e: Exception?) = Unit
+    }
+
+    private companion object {
+        /** The same gap as the Termux BellHandler. */
+        const val BELL_GAP_MS = 150L
     }
 }
