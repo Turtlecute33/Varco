@@ -37,4 +37,11 @@ class XtGetTcapTest {
     fun hexNameGetsReply() {
         assertTrue(reply("544e").startsWith("\u001bP1+r544e="))
     }
+
+    @Test
+    fun pageKeysAreNotSwapped() {
+        // kN (6b4e) is Page Down, ESC [ 6 ~; kP (6b50) is Page Up, ESC [ 5 ~.
+        assertEquals("\u001bP1+r6b4e=1B5B367E\u001b\\", reply("6b4e"))
+        assertEquals("\u001bP1+r6b50=1B5B357E\u001b\\", reply("6b50"))
+    }
 }

@@ -21,3 +21,5 @@ Changes made for Varco:
 - XTGETTCAP: a request name that is not hex gets no reply, so server bytes never come back as typed input.
 - `TerminalView.commitText()` sends a keyboard paste (more than one character, with a line break or ESC)
   through `TerminalEmulator.paste()`, as the menu paste: ESC and C1 are removed, and bracketed paste is used when the shell asks for it.
+- Fixes from termux-app master: `30ebb2dee3` (the termcap names `kN` and `kP` give Page Down and Page Up),
+  `47c473f9be` (an erase to the end of a line clears its line wrap), `5532cc4f88` (`TerminalRow.mSpaceUsed` is an `int`).
