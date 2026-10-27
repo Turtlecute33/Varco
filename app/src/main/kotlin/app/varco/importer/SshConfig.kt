@@ -6,7 +6,8 @@ package app.varco.importer
  * Only `Host` blocks with plain names become entries: patterns (`*`, `?`, `!`) and `Match` blocks are rules,
  * not servers. A block with more names ("Host vps 203.0.113.10") is one server, named by its first name.
  * Values from `Host *` blocks are not applied: Varco keeps each server complete. Of the options, only
- * HostName, User, Port and IdentityFile matter here; the first value wins, as in OpenSSH.
+ * HostName, User, Port and IdentityFile matter here; the first value wins, as in OpenSSH. ProxyJump and
+ * ProxyCommand only mark the entry: Varco has no jump hosts (DESIGN.md, not in v1).
  */
 object SshConfig {
     data class Entry(
@@ -16,6 +17,8 @@ object SshConfig {
         val port: Int,
         /** File names of IdentityFile values (no folder), to match imported keys. */
         val identityFiles: List<String>,
+        /** ProxyJump or ProxyCommand is set and is not "none": the server is not reachable without a jump host. */
+        val needsJump: Boolean,
     )
 
     fun parse(text: String): List<Entry> {
@@ -31,6 +34,7 @@ object SshConfig {
                 user = options["user"]?.first(),
                 port = options["port"]?.first()?.toIntOrNull()?.takeIf { it in 1..65535 } ?: 22,
                 identityFiles = options["identityfile"].orEmpty().map { it.substringAfterLast('/') },
+                needsJump = JUMP_OPTIONS.any { k -> options[k]?.first()?.equals("none", ignoreCase = true) == false },
             )
         }
 
@@ -56,6 +60,8 @@ object SshConfig {
         // An alias that shows twice: the first block wins, as in OpenSSH.
         return entries.distinctBy { it.alias }
     }
+
+    private val JUMP_OPTIONS = listOf("proxyjump", "proxycommand")
 
     /** "Key value", "Key=value" or "Key = value". The key is lower case. */
     private fun split(line: String): Pair<String, String>? {

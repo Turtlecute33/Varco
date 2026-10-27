@@ -81,7 +81,7 @@ class Importer(
         }
 
         var servers = 0
-        for (file in byKind[Kind.SSH_CONFIG].orEmpty()) servers += importConfig(file, keyIdsByFile)
+        for (file in byKind[Kind.SSH_CONFIG].orEmpty()) servers += importConfig(file, keyIdsByFile, skipped)
 
         var hosts = 0
         val knownHostsText = byKind[Kind.KNOWN_HOSTS].orEmpty().joinToString("\n") { it.text }
@@ -155,8 +155,10 @@ class Importer(
         }
     }
 
-    private fun importConfig(file: Picked, keyIdsByFile: Map<String, String>): Int {
-        val entries = SshConfig.parse(file.text)
+    private fun importConfig(file: Picked, keyIdsByFile: Map<String, String>, skipped: MutableList<String>): Int {
+        val (jump, entries) = SshConfig.parse(file.text).partition { it.needsJump }
+        // Without the jump host the connection only times out: list these servers, do not add them.
+        jump.forEach { skipped += "${it.alias}: needs ProxyJump or ProxyCommand, not supported" }
         var added = 0
         store.update { st ->
             val keysByName = st.keys.associate { it.name to it.id } + keyIdsByFile

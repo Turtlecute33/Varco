@@ -2,6 +2,7 @@ package app.varco.importer
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 class SshConfigTest {
     @Test
@@ -48,5 +49,31 @@ class SshConfigTest {
         // %h is the alias; a port out of range falls back to 22.
         assertEquals("quoted name.lan", entries[2].host)
         assertEquals(22, entries[2].port)
+        assertFalse(entries.any { it.needsJump })
+    }
+
+    @Test
+    fun marksEntriesThatNeedAJumpHost() {
+        val entries = SshConfig.parse(
+            """
+            Host inner
+                HostName 10.0.0.5
+                ProxyJump bastion
+
+            Host piped
+                ProxyCommand ssh -W %h:%p bastion
+
+            Host direct
+                HostName 192.0.2.7
+                ProxyJump none
+
+            Host bastion
+                HostName 192.0.2.1
+            """.trimIndent(),
+        )
+        assertEquals(
+            mapOf("inner" to true, "piped" to true, "direct" to false, "bastion" to false),
+            entries.associate { it.alias to it.needsJump },
+        )
     }
 }
