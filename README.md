@@ -168,9 +168,10 @@ The emulator cannot test the YubiKey (NFC and USB), StrongBox and pinch to zoom.
 
 Varco is free software under the [GNU General Public License v3.0](LICENSE). The terminal engine
 comes from Termux (GPL-3.0, with Apache-2.0 parts); see `terminal/NOTICE.md`. Other parts: JSch
-(BSD-3-Clause), Bouncy Castle (MIT-style), YubiKit, AndroidX, Jetpack Compose and Kotlin
-coroutines (Apache-2.0), JetBrains Mono (OFL-1.1, `docs/licences/`) and Material Symbols
-(Apache-2.0).
+with JZlib (BSD-3-Clause) and jBCrypt (ISC), Bouncy Castle (MIT), YubiKit, AndroidX, Jetpack
+Compose and Kotlin coroutines (Apache-2.0), JetBrains Mono (OFL-1.1) and Material Symbols
+(Apache-2.0). The licence texts are in [`docs/licences/`](docs/licences/), and the app shows them
+in Settings > Open-source licences.
 
 ---
 

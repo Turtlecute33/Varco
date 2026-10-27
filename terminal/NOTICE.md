@@ -4,9 +4,11 @@ The code in this module comes from [termux-app](https://github.com/termux/termux
 (commit `5b657c6adf4304e5198951ce815fe0205dcac29c`), modules `terminal-emulator` and `terminal-view`.
 
 Licences: termux-app is released under GPLv3 only. Parts of these modules come from jackpal's
-"Terminal Emulator for Android" (Apache License 2.0). Varco is GPL-3.0, so both apply here.
+"Terminal Emulator for Android" (Apache License 2.0). Varco is GPL-3.0, so both apply here. The licence
+texts are in `LICENSE` (GPL-3.0) and `docs/licences/Apache-2.0.txt`. In the app, Settings > Open-source
+licences shows the Apache text and refers to the GPL.
 
-Changes made for Varco:
+Changed for Varco, 2026-10:
 
 - `TerminalSession` no longer starts a local process (JNI, pty) and has no exit handling. It couples the
   emulator to a remote byte stream: `feed()` for remote output, a `Transport` for typed input and size

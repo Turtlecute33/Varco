@@ -1,5 +1,6 @@
 package app.varco.ui.settings
 
+import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -36,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -53,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.varco.BuildConfig
+import app.varco.R
 import app.varco.app
 import app.varco.data.Settings
 import app.varco.data.Settings.Companion.MAX_FONT
@@ -68,6 +71,8 @@ import app.varco.ui.components.SectionHeader
 import app.varco.ui.components.SwitchRow
 import app.varco.ui.nav.Navigator
 import app.varco.ui.nav.Route
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 @Composable
@@ -186,28 +191,25 @@ fun SettingsScreen(nav: Navigator) {
         )
     }
     if (licences) {
+        val text by produceState("") { value = withContext(Dispatchers.IO) { readLicences(context) } }
         AlertDialog(
             onDismissRequest = { licences = false },
             title = { Text("Open-source licences") },
-            text = { Text(LICENCES, style = MaterialTheme.typography.bodySmall) },
+            text = { Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.verticalScroll(rememberScrollState())) },
             confirmButton = { TextButton(onClick = { licences = false }) { Text("Close") } },
         )
     }
 }
 
-private const val LICENCES = """Terminal engine: Termux terminal-emulator and terminal-view (GPLv3; parts Apache-2.0 from jackpal's Terminal Emulator for Android). Changed for SSH.
-
-SSH: JSch by mwiede (BSD-3-Clause), with jBCrypt (ISC).
-
-Cryptography: Bouncy Castle (MIT-style Bouncy Castle Licence).
-
-YubiKey: Yubico YubiKit for Android (Apache-2.0).
-
-Font: JetBrains Mono (SIL Open Font License 1.1).
-
-Icons: Material Symbols (Apache-2.0).
-
-AndroidX, Jetpack Compose, Kotlin (Apache-2.0)."""
+/**
+ * The component list and the full licence texts (res/raw/licences.txt, the same texts as docs/licences/).
+ * The line breaks inside a paragraph go, so that the dialog wraps the lines.
+ */
+private fun readLicences(context: Context): String =
+    context.resources.openRawResource(R.raw.licences).bufferedReader().use { it.readText() }
+        .lines().joinToString("\n") { it.trim() }
+        .replace(Regex("(?<=\\S)\n(?=\\S)"), " ")
+        .replace(Regex("\n{3,}"), "\n\n")
 
 /** A radio option; the whole row (button and label) is the touch target. */
 @Composable

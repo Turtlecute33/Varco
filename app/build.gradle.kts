@@ -60,8 +60,9 @@ android {
 
     packaging {
         resources {
-            // Build metadata and licence files, also in the library folders (META-INF/androidx/...): Settings >
-            // Open-source licences names the licences. Bouncy Castle's texts for its cert path reviewer: not used.
+            // Build metadata and licence files, also in the library folders (META-INF/androidx/...): the licence
+            // texts are in res/raw/licences.txt (Settings > Open-source licences). Bouncy Castle's texts for its cert
+            // path reviewer: not used.
             excludes += setOf(
                 "META-INF/versions/**", "META-INF/*.md", "META-INF/LICENSE*", "META-INF/NOTICE*",
                 "META-INF/**/LICENSE*", "META-INF/**/NOTICE*", "DebugProbesKt.bin", "kotlin/**",
