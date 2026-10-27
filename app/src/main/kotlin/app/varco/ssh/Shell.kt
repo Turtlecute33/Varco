@@ -21,6 +21,10 @@ import java.net.UnknownHostException
 import java.util.UUID
 import java.util.concurrent.Executors
 
+/** Server text that Varco writes itself (banner, end reason): no control sequences, because a banner comes before sign-in. */
+internal fun printable(s: String): String = s.replace(Regex("\u001b\\[[0-?]*[ -/]*[@-~]"), "")
+    .filter { it == '\n' || it == '\t' || (it >= ' ' && it != '\u007f' && it !in '\u0080'..'\u009f') }
+
 /**
  * One terminal tab: a [TerminalSession] (screen and scrollback) and the SSH shell that feeds it. After the
  * connection ends, the tab stays with its scrollback; [reconnect] opens a new connection in the same tab.
@@ -89,7 +93,7 @@ class Shell(
         val conn = SshConnection(env, server)
         connection = conn
         val end: String? = try {
-            conn.connect(onBanner = { banner -> term.feedText(banner.replace("\n", "\r\n")) })
+            conn.connect(onBanner = { banner -> term.feedText(printable(banner).replace("\n", "\r\n")) })
             val (columns, rows) = withContext(Dispatchers.Main) { term.emulator?.let { it.mColumns to it.mRows } ?: (80 to 24) }
             val ch = conn.jsch.openChannel("shell") as ChannelShell
             ch.setPtyType("xterm-256color", columns, rows, 0, 0)
@@ -117,7 +121,7 @@ class Shell(
             conn.close()
             channel = null
         }
-        term.feedText("\r\n\u001b[2m[${end ?: "Session ended"}]\u001b[0m\r\n")
+        term.feedText("\r\n\u001b[2m[${printable(end ?: "Session ended")}]\u001b[0m\r\n")
         _state.value = State.Closed(end)
     }
 
