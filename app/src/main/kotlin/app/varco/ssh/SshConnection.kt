@@ -156,6 +156,9 @@ class SshConnection(private val env: SshEnv, val server: Server) {
         private var savedTried = false
         private var asked = 0
 
+        /** The keyboard-interactive prompt that got the saved password. */
+        private var savedPrompt: String? = null
+
         /** A password the user asked to save; written after a successful sign-in. */
         var newPassword: String? = null
             private set
@@ -181,12 +184,17 @@ class SshConnection(private val env: SshEnv, val server: Server) {
                 password = server.password
                 return true
             }
+            password = askPassword() ?: return false
+            return true
+        }
+
+        /** The password dialog. After a failed saved password, "Save password" starts on. */
+        private fun askPassword(): String? {
             val reply = ask(Ask.Password(server.name, server.user, retry = asked++ > 0 || savedTried, saved = savedTried))
-                ?: return false
-            password = reply.password
+                ?: return null
             newPassword = if (reply.save) reply.password else null
             savedFailed = savedTried
-            return true
+            return reply.password
         }
 
         override fun promptKeyboardInteractive(
@@ -197,12 +205,15 @@ class SshConnection(private val env: SshEnv, val server: Server) {
             echo: BooleanArray,
         ): Array<String>? {
             if (prompt.isEmpty()) return emptyArray()
-            if (prompt.size == 1 && !echo[0] && prompt[0].contains("password", ignoreCase = true) &&
-                !savedTried && server.password != null
-            ) {
+            val passwordPrompt = prompt.size == 1 && !echo[0] && prompt[0].contains("password", ignoreCase = true)
+            if (passwordPrompt && !savedTried && server.password != null) {
                 savedTried = true
+                savedPrompt = prompt[0]
                 return arrayOf(server.password)
             }
+            // The same prompt again: the server rejected the saved password. A different prompt (one-time
+            // password, password change) is not a retry and goes to the server dialog.
+            if (passwordPrompt && prompt[0] == savedPrompt) return askPassword()?.let { arrayOf(it) }
             val fields = prompt.mapIndexed { i, text -> Ask.Interactive.Field(text, echo.getOrElse(i) { false }) }
             return ask(Ask.Interactive(server.name, name.orEmpty(), instruction.orEmpty(), fields))?.toTypedArray()
         }
