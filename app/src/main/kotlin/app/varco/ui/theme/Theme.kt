@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,20 +34,31 @@ fun VarcoTheme(scheme: Scheme, content: @Composable () -> Unit) {
     )
 }
 
-/** Material roles from a terminal scheme: surfaces are steps from background to foreground; blue is the accent. */
+/**
+ * Material roles from a terminal scheme: surfaces are steps from background to foreground; blue is the accent.
+ * Text roles (onSurface, onSurfaceVariant, primary, error) get a contrast floor; containers keep the raw colours.
+ */
 fun colorsFor(scheme: Scheme): ColorScheme {
     val bg = Color(scheme.background)
     val fg = Color(scheme.foreground)
-    val accent = Color(scheme.ansi[4])
+    val rawAccent = Color(scheme.ansi[4])
     val accent2 = Color(scheme.ansi[5])
-    val error = Color(scheme.ansi[1])
+    val rawError = Color(scheme.ansi[1])
     fun step(f: Float) = lerp(bg, fg, f)
     fun on(c: Color) = if (luminance(c) > 0.45f) Color(0xFF11111B) else Color(0xFFF8F8F8)
+    // WCAG AA (4.5:1) on the background and in dialogs (surfaceContainerHigh): first toward the text colour,
+    // then toward white or black when the text colour of the scheme is not sufficient.
+    val high = step(0.08f)
+    val pole = if (scheme.isDark) Color.White else Color.Black
+    fun text(c: Color) = legible(legible(c, fg, bg, high), pole, bg, high)
+    val onBg = text(fg)
+    val accent = text(rawAccent)
+    val error = text(rawError)
     val base = if (scheme.isDark) darkColorScheme() else lightColorScheme()
     return base.copy(
         primary = accent,
         onPrimary = on(accent),
-        primaryContainer = lerp(bg, accent, 0.28f),
+        primaryContainer = lerp(bg, rawAccent, 0.28f),
         onPrimaryContainer = fg,
         secondary = accent2,
         onSecondary = on(accent2),
@@ -58,18 +70,18 @@ fun colorsFor(scheme: Scheme): ColorScheme {
         onTertiaryContainer = fg,
         error = error,
         onError = on(error),
-        errorContainer = lerp(bg, error, 0.25f),
+        errorContainer = lerp(bg, rawError, 0.25f),
         onErrorContainer = fg,
         background = bg,
-        onBackground = fg,
+        onBackground = onBg,
         surface = bg,
-        onSurface = fg,
+        onSurface = onBg,
         surfaceVariant = step(0.10f),
-        onSurfaceVariant = step(0.70f),
-        surfaceTint = accent,
+        onSurfaceVariant = text(step(0.70f)),
+        surfaceTint = rawAccent,
         inverseSurface = fg,
         inverseOnSurface = bg,
-        inversePrimary = lerp(accent, bg, 0.3f),
+        inversePrimary = lerp(rawAccent, bg, 0.3f),
         outline = step(0.38f),
         outlineVariant = step(0.18f),
         scrim = Color.Black,
@@ -78,12 +90,28 @@ fun colorsFor(scheme: Scheme): ColorScheme {
         surfaceContainerLowest = lerp(bg, Color.Black, 0.2f),
         surfaceContainerLow = step(0.03f),
         surfaceContainer = step(0.05f),
-        surfaceContainerHigh = step(0.08f),
+        surfaceContainerHigh = high,
         surfaceContainerHighest = step(0.11f),
     )
 }
 
 private fun luminance(c: Color) = 0.2126f * c.red + 0.7152f * c.green + 0.0722f * c.blue
+
+/** [c] blended toward [toward] in 5 % steps until it has 4.5:1 contrast on [a] and on [b]; else [toward]. */
+private fun legible(c: Color, toward: Color, a: Color, b: Color): Color {
+    for (i in 0..20) {
+        val x = lerp(c, toward, i / 20f)
+        if (contrast(x, a) >= 4.5f && contrast(x, b) >= 4.5f) return x
+    }
+    return toward
+}
+
+/** WCAG contrast ratio of two colours. */
+private fun contrast(a: Color, b: Color): Float {
+    val la = a.luminance() + 0.05f
+    val lb = b.luminance() + 0.05f
+    return maxOf(la, lb) / minOf(la, lb)
+}
 
 private val VarcoShapes = Shapes(
     extraSmall = RoundedCornerShape(6.dp),
