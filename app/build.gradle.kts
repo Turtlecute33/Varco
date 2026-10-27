@@ -60,8 +60,13 @@ android {
 
     packaging {
         resources {
-            // BouncyCastle and jsch carry build metadata that the app does not need.
-            excludes += setOf("META-INF/versions/**", "META-INF/*.md", "META-INF/LICENSE*", "META-INF/NOTICE*")
+            // Build metadata and licence files, also in the library folders (META-INF/androidx/...): Settings >
+            // Open-source licences names the licences. Bouncy Castle's texts for its cert path reviewer: not used.
+            excludes += setOf(
+                "META-INF/versions/**", "META-INF/*.md", "META-INF/LICENSE*", "META-INF/NOTICE*",
+                "META-INF/**/LICENSE*", "META-INF/**/NOTICE*", "DebugProbesKt.bin", "kotlin/**",
+                "org/bouncycastle/x509/*.properties",
+            )
         }
     }
 
@@ -76,8 +81,11 @@ android {
     }
 }
 
+// No native code in the release APK. The only library with some, androidx.graphics.path, loads it only below
+// Android 14 (its own PathIterator); from Android 14 the platform's PathIterator does the work, and minSdk is 35.
 androidComponents {
     onVariants(selector().withBuildType("release")) { variant ->
+        variant.packaging.jniLibs.excludes.add("lib/*/libandroidx.graphics.path.so")
         // Without a release key, the release APK stays unsigned. Local values only in the lambda, so that
         // the configuration cache can store it without the build script.
         signingProps?.let { props ->
