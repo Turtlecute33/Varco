@@ -2,6 +2,7 @@ package app.varco.ui.files
 
 import android.app.Application
 import android.net.Uri
+import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.text.format.DateUtils
 import android.text.format.Formatter
@@ -114,9 +115,17 @@ class FilesModel(private val context: Application, private val serverId: String)
     fun download(entry: Sftp.Entry, target: Uri) = work {
         transfer = 0L to entry.size
         try {
-            context.contentResolver.openOutputStream(target)?.use { out ->
-                sftp().download(entry.path, out) { done -> transfer = done to entry.size }
+            val resolver = context.contentResolver
+            // "w" may keep old bytes past the new end; some providers reject "wt".
+            val truncating = runCatching { resolver.openOutputStream(target, "wt") }.getOrNull()
+            val out = truncating ?: resolver.openOutputStream(target) ?: return@work
+            var wrote = 0L
+            val done = runCatching {
+                out.use { sftp().download(entry.path, it) { d -> wrote = d; transfer = d to entry.size } }
             }
+            // A cut-off file must not look complete. A "w" file with no new bytes still has its old content: keep it.
+            if (done.isFailure && (truncating != null || wrote > 0)) runCatching { DocumentsContract.deleteDocument(resolver, target) }
+            done.getOrThrow()
         } finally {
             transfer = null
         }
