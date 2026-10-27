@@ -32,6 +32,9 @@ public final class TerminalSession extends TerminalOutput {
 
     private static final int MSG_NEW_INPUT = 1;
     private static final int QUEUE_BYTES = 64 * 1024;
+    /** Typed input that may wait for a stalled connection. More is dropped (see {@link InputQueue}). */
+    private static final int INPUT_CAP_BYTES = 4 * 1024 * 1024;
+    private static final String INPUT_DROPPED = "\r\n\033[2m[Input not sent: too much input waits for the connection]\033[0m\r\n";
 
     public final String mHandle = UUID.randomUUID().toString();
 
@@ -39,8 +42,8 @@ public final class TerminalSession extends TerminalOutput {
 
     /** Remote output, written by the transport's reader thread and read by the main thread. */
     final ByteQueue mRemoteToTerminalIOQueue = new ByteQueue(QUEUE_BYTES);
-    /** Typed input, written by the main thread and read by the writer thread. */
-    final ByteQueue mTerminalToRemoteIOQueue = new ByteQueue(QUEUE_BYTES);
+    /** Typed input, written by the main thread and read by the writer thread. Never blocks the main thread. */
+    final InputQueue mTerminalToRemoteIOQueue = new InputQueue(INPUT_CAP_BYTES);
     /** Buffer to write translate code points into utf8 before writing to mTerminalToRemoteIOQueue */
     private final byte[] mUtf8InputBuffer = new byte[5];
 
@@ -49,6 +52,8 @@ public final class TerminalSession extends TerminalOutput {
 
     private volatile Transport mTransport;
     private volatile boolean mClosed;
+    /** Input was dropped and the notice is shown; the next queued input resets it. Main thread. */
+    private boolean mDropping;
 
     /** Set by the application for user identification of session, not by terminal. */
     public String mSessionName;
@@ -63,15 +68,19 @@ public final class TerminalSession extends TerminalOutput {
         new Thread("TermSessionOutputWriter") {
             @Override
             public void run() {
-                final byte[] buffer = new byte[QUEUE_BYTES];
                 while (true) {
-                    int bytesToWrite = mTerminalToRemoteIOQueue.read(buffer, true);
-                    if (bytesToWrite == -1) return;
+                    byte[] data;
+                    try {
+                        data = mTerminalToRemoteIOQueue.take();
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                    if (data == null) return;
                     Transport transport = mTransport;
                     if (transport == null) continue; // Not connected: typed input is dropped.
                     try {
                         OutputStream out = transport.output();
-                        out.write(buffer, 0, bytesToWrite);
+                        out.write(data);
                         out.flush();
                     } catch (IOException e) {
                         // The transport reports its own end; input to a closed channel is dropped.
@@ -134,7 +143,20 @@ public final class TerminalSession extends TerminalOutput {
     /** Write data to the remote side. */
     @Override
     public void write(byte[] data, int offset, int count) {
-        if (!mClosed) mTerminalToRemoteIOQueue.write(data, offset, count);
+        if (mClosed) return;
+        if (mTerminalToRemoteIOQueue.offer(data, offset, count)) {
+            mDropping = false;
+        } else if (!mDropping) {
+            mDropping = true;
+            // Not feedText(): the main thread must not wait for its own output queue. Posted, because a
+            // write can come from inside TerminalEmulator.append() (a reply to the server).
+            mMainThreadHandler.post(() -> {
+                if (mEmulator == null || mClosed) return;
+                byte[] notice = INPUT_DROPPED.getBytes(StandardCharsets.UTF_8);
+                mEmulator.append(notice, notice.length);
+                notifyScreenUpdate();
+            });
+        }
     }
 
     /** Write the Unicode code point to the terminal encoded in UTF-8. */

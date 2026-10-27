@@ -12,7 +12,9 @@ Changes made for Varco:
   emulator to a remote byte stream: `feed()` for remote output, a `Transport` for typed input and size
   changes. A session can change its transport, so the screen and scrollback stay after a reconnect.
 - `JNI.java` and the native code are removed.
-- Queues are 64 KiB (upstream 4 KiB), for faster output over SSH.
+- The output queue is 64 KiB (upstream 4 KiB), for faster output over SSH.
+- Typed input goes through `InputQueue`, not a blocking `ByteQueue`: `write()` never blocks the main thread when
+  the connection stalls. Input over 4 MiB that waits is dropped, and the terminal shows a short notice.
 - `TerminalSessionClient.onCopyTextToClipboard` tells server copies (OSC 52) from user copies, so that the
   app can block the server from setting the clipboard. `onSessionFinished` is removed.
 - `TerminalView` asks the keyboard not to learn typed text (`IME_FLAG_NO_PERSONALIZED_LEARNING`).
