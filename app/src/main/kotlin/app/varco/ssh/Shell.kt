@@ -89,8 +89,10 @@ class Shell(
 
     private suspend fun run() {
         _state.value = State.Connecting
-        term.feedText("\u001b[2mConnecting to ${server.user}@${server.host}…\u001b[0m\r\n")
-        val conn = SshConnection(env, server)
+        // Saved edits and a password saved at an earlier sign-in apply to a reconnect.
+        val current = env.store.state.value.servers.firstOrNull { it.id == server.id } ?: server
+        term.feedText("\u001b[2mConnecting to ${current.user}@${current.host}…\u001b[0m\r\n")
+        val conn = SshConnection(env, current)
         connection = conn
         val end: String? = try {
             conn.connect(onBanner = { banner -> term.feedText(printable(banner).replace("\n", "\r\n")) })
