@@ -93,7 +93,11 @@ class FilesModel(private val context: Application, private val serverId: String)
 
     fun up() = path?.let { open(Sftp.parent(it)) }
 
-    fun refresh() = path?.let(::open)
+    /** Lists the open folder again; after a failed first listing, the home folder. */
+    fun refresh() {
+        val dir = path
+        work { list(dir ?: sftp().home) }
+    }
 
     fun mkdir(name: String) = work {
         val dir = requireNotNull(path)
