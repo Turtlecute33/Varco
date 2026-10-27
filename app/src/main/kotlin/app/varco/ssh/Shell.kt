@@ -50,6 +50,11 @@ class Shell(
     /** Title set by the remote side (OSC 0/2), or null. */
     val title = MutableStateFlow<String?>(null)
 
+    private val _target = MutableStateFlow(server)
+
+    /** The server copy of the last connection (with saved edits): the session list shows its user@host. */
+    val target: StateFlow<Server> = _target.asStateFlow()
+
     /** Network work that the main thread must not do: window-change requests and disconnects. */
     private val io = Executors.newSingleThreadExecutor { Thread(it, "VarcoShellIo") }
 
@@ -91,6 +96,7 @@ class Shell(
         _state.value = State.Connecting
         // Saved edits and a password saved at an earlier sign-in apply to a reconnect.
         val current = env.store.state.value.servers.firstOrNull { it.id == server.id } ?: server
+        _target.value = current
         term.feedText("\u001b[2mConnecting to ${current.user}@${current.host}…\u001b[0m\r\n")
         val conn = SshConnection(env, current)
         connection = conn

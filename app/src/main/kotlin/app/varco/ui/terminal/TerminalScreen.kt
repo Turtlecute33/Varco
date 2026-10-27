@@ -264,6 +264,7 @@ private fun SessionSheet(
             items(shells, key = { it.id }) { shell ->
                 val st by shell.state.collectAsStateWithLifecycle()
                 val title by shell.title.collectAsStateWithLifecycle()
+                val target by shell.target.collectAsStateWithLifecycle()
                 // The state as text too, not only as the dot colour (as in the home screen).
                 val label = when (val s = st) {
                     Shell.State.Connecting -> "Connecting…"
@@ -273,7 +274,7 @@ private fun SessionSheet(
                 ListRow(
                     title = shell.server.name + if (shell === current) "  ·  shown" else "",
                     // The server sets the title: it comes after the real user@host and never replaces it.
-                    subtitle = "${shell.server.user}@${shell.server.host}  ·  $label",
+                    subtitle = "${target.user}@${target.host}  ·  $label",
                     onClick = { onSwitch(shell) },
                 ) {
                     Box(Modifier.size(10.dp).background(dotColor(st, scheme), CircleShape))
