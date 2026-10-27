@@ -16,4 +16,5 @@ Changes made for Varco:
 - `TerminalSessionClient.onCopyTextToClipboard` tells server copies (OSC 52) from user copies, so that the
   app can block the server from setting the clipboard. `onSessionFinished` is removed.
 - `TerminalView` asks the keyboard not to learn typed text (`IME_FLAG_NO_PERSONALIZED_LEARNING`).
+- `TerminalView` is marked accessibility-data-sensitive, so that only accessibility tools can read the screen text.
 - `TerminalEmulator.mCellWidthPixels` / `mCellHeightPixels` are package-visible.

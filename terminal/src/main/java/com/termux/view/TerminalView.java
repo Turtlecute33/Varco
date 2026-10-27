@@ -253,6 +253,8 @@ public final class TerminalView extends View {
         mScroller = new Scroller(context);
         AccessibilityManager am = (AccessibilityManager) context.getSystemService(Context.ACCESSIBILITY_SERVICE);
         mAccessibilityEnabled = am.isEnabled();
+        // Varco: terminal text can hold secrets; only accessibility tools (for example TalkBack) may read it.
+        setAccessibilityDataSensitive(ACCESSIBILITY_DATA_SENSITIVE_YES);
     }
 
 
