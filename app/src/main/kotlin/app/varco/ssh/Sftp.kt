@@ -23,7 +23,7 @@ class Sftp(connection: SshConnection) : AutoCloseable {
     fun list(path: String): List<Entry> {
         val found = ArrayList<ChannelSftp.LsEntry>()
         // Only collect here: jsch parses the listing and a stat with one shared buffer.
-        channel.ls(path) { e ->
+        channel.ls(lit(path)) { e ->
             if (e.filename != "." && e.filename != "..") found += e
             ChannelSftp.LsEntrySelector.CONTINUE
         }
@@ -31,21 +31,21 @@ class Sftp(connection: SshConnection) : AutoCloseable {
             val a = e.attrs
             val full = join(path, e.filename)
             // A link to a folder opens like a folder.
-            val isDir = a.isDir || (a.isLink && runCatching { channel.stat(full).isDir }.getOrDefault(false))
+            val isDir = a.isDir || (a.isLink && runCatching { channel.stat(lit(full)).isDir }.getOrDefault(false))
             Entry(e.filename, full, isDir, a.isLink, a.size, a.mTime * 1000L)
         }.sortedWith(compareBy<Entry>({ !it.isDir }, { it.name.lowercase() }))
     }
 
     fun download(path: String, out: OutputStream, progress: (Long) -> Unit) =
-        channel.get(path, out, Monitor(progress))
+        channel.get(lit(path), out, Monitor(progress))
 
     /** Replaces a file at [path]: check [exists] first, so that the user can decide. */
     fun upload(input: InputStream, path: String, progress: (Long) -> Unit) =
-        channel.put(input, path, Monitor(progress), ChannelSftp.OVERWRITE)
+        channel.put(input, lit(path), Monitor(progress), ChannelSftp.OVERWRITE)
 
     /** True when [path] exists. A link counts, also a broken one: an upload writes through it. */
     fun exists(path: String): Boolean = try {
-        channel.lstat(path)
+        channel.lstat(lit(path))
         true
     } catch (e: SftpException) {
         if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) false else throw e
@@ -53,10 +53,10 @@ class Sftp(connection: SshConnection) : AutoCloseable {
 
     fun mkdir(path: String) = channel.mkdir(path)
 
-    fun rename(from: String, to: String) = channel.rename(from, to)
+    fun rename(from: String, to: String) = channel.rename(lit(from), lit(to))
 
     /** Deletes a file, or an empty folder. */
-    fun delete(entry: Entry) = if (entry.isDir && !entry.isLink) channel.rmdir(entry.path) else channel.rm(entry.path)
+    fun delete(entry: Entry) = if (entry.isDir && !entry.isLink) channel.rmdir(lit(entry.path)) else channel.rm(lit(entry.path))
 
     override fun close() = channel.disconnect()
 
@@ -77,5 +77,11 @@ class Sftp(connection: SshConnection) : AutoCloseable {
         fun join(dir: String, name: String) = if (dir.endsWith('/')) dir + name else "$dir/$name"
 
         fun parent(path: String): String = path.trimEnd('/').substringBeforeLast('/', "").ifEmpty { "/" }
+
+        /**
+         * JSch reads * ? and \ in remote paths as glob syntax; escape them so that a name means only itself.
+         * mkdir does not unquote, so it takes the raw path.
+         */
+        internal fun lit(path: String) = path.replace("\\", "\\\\").replace("*", "\\*").replace("?", "\\?")
     }
 }
