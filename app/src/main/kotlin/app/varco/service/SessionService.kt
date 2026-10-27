@@ -68,7 +68,8 @@ class SessionService : Service() {
             .setOngoing(true)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
-            .addAction(Notification.Action.Builder(null, "Disconnect all", disconnect).build())
+            // The notification shows on the lock screen: only an unlocked device can end all sessions.
+            .addAction(Notification.Action.Builder(null, "Disconnect all", disconnect).setAuthenticationRequired(true).build())
             .build()
     }
 
