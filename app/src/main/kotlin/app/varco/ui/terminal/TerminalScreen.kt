@@ -262,7 +262,8 @@ private fun SessionSheet(
                 val title by shell.title.collectAsStateWithLifecycle()
                 ListRow(
                     title = shell.server.name + if (shell === current) "  ·  shown" else "",
-                    subtitle = title ?: "${shell.server.user}@${shell.server.host}",
+                    // The server sets the title: it comes after the real user@host and never replaces it.
+                    subtitle = "${shell.server.user}@${shell.server.host}" + (title?.takeUnless { it.isBlank() }?.let { "  ·  $it" } ?: ""),
                     onClick = { onSwitch(shell) },
                 ) {
                     Box(Modifier.size(10.dp).background(dotColor(st, scheme), CircleShape))
