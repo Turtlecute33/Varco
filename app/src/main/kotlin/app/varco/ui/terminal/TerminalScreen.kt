@@ -85,6 +85,7 @@ fun TerminalScreen(nav: Navigator) {
     var sessionSheet by remember { mutableStateOf(false) }
     var snippetSheet by remember { mutableStateOf(false) }
     val shellState by shell.state.collectAsStateWithLifecycle()
+    val target by shell.target.collectAsStateWithLifecycle()
 
     fun showKeyboard() {
         val v = view ?: return
@@ -169,7 +170,7 @@ fun TerminalScreen(nav: Navigator) {
             scheme = scheme,
             modifiers = modifiers,
             sink = sink,
-            chipLabel = shell.server.name,
+            chipLabel = target.name,
             chipDot = dotColor(shellState, scheme),
             onChip = { sessionSheet = true },
             onSnippets = { snippetSheet = true },
@@ -272,7 +273,7 @@ private fun SessionSheet(
                     is Shell.State.Closed -> s.message ?: "Session ended"
                 }
                 ListRow(
-                    title = shell.server.name + if (shell === current) "  ·  shown" else "",
+                    title = target.name + if (shell === current) "  ·  shown" else "",
                     // The server sets the title: it comes after the real user@host and never replaces it.
                     subtitle = "${target.user}@${target.host}  ·  $label",
                     onClick = { onSwitch(shell) },

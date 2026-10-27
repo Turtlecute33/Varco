@@ -164,13 +164,14 @@ fun HomeScreen(nav: Navigator) {
 private fun ShellRow(shell: Shell, onOpen: () -> Unit, onClose: () -> Unit) {
     val state by shell.state.collectAsStateWithLifecycle()
     val title by shell.title.collectAsStateWithLifecycle()
+    val target by shell.target.collectAsStateWithLifecycle()
     val (dot, label) = when (val s = state) {
         Shell.State.Connecting -> Color(Schemes.default.ansi[3]) to "Connecting…"
         Shell.State.Connected -> Color(Schemes.default.ansi[2]) to (title ?: "Connected")
         is Shell.State.Closed -> MaterialTheme.colorScheme.outline to (s.message ?: "Session ended")
     }
     ListRow(
-        title = shell.server.name,
+        title = target.name,
         subtitle = label,
         onClick = onOpen,
     ) {

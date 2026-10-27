@@ -52,7 +52,7 @@ class Shell(
 
     private val _target = MutableStateFlow(server)
 
-    /** The server copy of the last connection (with saved edits): the session list shows its user@host. */
+    /** The server copy of the last connection (with saved edits): the tab UI shows its name and user@host. */
     val target: StateFlow<Server> = _target.asStateFlow()
 
     /** Network work that the main thread must not do: window-change requests and disconnects. */
