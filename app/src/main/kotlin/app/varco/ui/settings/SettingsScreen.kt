@@ -147,6 +147,11 @@ fun SettingsScreen(nav: Navigator) {
                 { v -> set { it.copy(secureWindow = v) } },
                 "Also hides Varco in the Recents screen and from screen recording",
             )
+            ListRow(
+                title = "Trusted host keys",
+                subtitle = "See or delete the host keys that Varco trusts",
+                onClick = { nav.go(Route.HostKeys) },
+            )
 
             SectionHeader("Data")
             ListRow(

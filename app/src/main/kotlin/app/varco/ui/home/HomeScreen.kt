@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.varco.app
 import app.varco.data.Server
+import app.varco.data.withoutServer
 import app.varco.ssh.Shell
 import app.varco.term.Schemes
 import app.varco.ui.components.Bar
@@ -146,11 +147,12 @@ fun HomeScreen(nav: Navigator) {
     deleting?.let { server ->
         ConfirmDialog(
             title = "Delete ${server.name}?",
-            text = "The server and its saved password are deleted. Keys and trusted host keys stay.",
+            text = "The server, its saved password and its trusted host keys are deleted. " +
+                "Host keys stay when another server has the same host and port. Your keys stay.",
             confirm = "Delete",
             destructive = true,
             onConfirm = {
-                app.store.update { st -> st.copy(servers = st.servers.filterNot { it.id == server.id }) }
+                app.store.update { it.withoutServer(server.id) }
                 deleting = null
             },
             onDismiss = { deleting = null },

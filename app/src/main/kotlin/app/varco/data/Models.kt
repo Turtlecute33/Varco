@@ -15,6 +15,21 @@ data class AppState(
     val settings: Settings = Settings(),
 )
 
+/**
+ * Removes the server [id]. Its trusted host keys go too, but only when no other server has the same host and
+ * port. Imported known_hosts lines stay: their names can be hashed.
+ */
+fun AppState.withoutServer(id: String): AppState {
+    val server = servers.firstOrNull { it.id == id } ?: return this
+    val rest = servers.filterNot { it.id == id }
+    val host = server.host.lowercase()
+    val shared = rest.any { it.host.lowercase() == host && it.port == server.port }
+    return copy(
+        servers = rest,
+        knownHosts = if (shared) knownHosts else knownHosts.filterNot { it.host == host && it.port == server.port },
+    )
+}
+
 data class Server(
     val id: String,
     val name: String,

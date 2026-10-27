@@ -28,6 +28,7 @@ import app.varco.ui.importer.ImportScreen
 import app.varco.ui.keys.KeyScreen
 import app.varco.ui.keys.KeysScreen
 import app.varco.ui.servers.EditServerScreen
+import app.varco.ui.settings.HostKeysScreen
 import app.varco.ui.settings.SettingsScreen
 import app.varco.ui.snippets.SnippetsScreen
 import app.varco.ui.terminal.TerminalScreen
@@ -62,6 +63,7 @@ fun AppNav(nav: Navigator, modifier: Modifier = Modifier) {
             entry<Route.Key> { KeyScreen(it.id, nav) }
             entry<Route.Snippets> { SnippetsScreen(nav) }
             entry<Route.Settings> { SettingsScreen(nav) }
+            entry<Route.HostKeys> { HostKeysScreen(nav) }
             entry<Route.Import> { ImportScreen(nav) }
             entry<Route.Files> { FilesScreen(it.serverId, nav) }
         },

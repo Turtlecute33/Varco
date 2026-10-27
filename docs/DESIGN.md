@@ -35,6 +35,9 @@
 - Host keys: Varco's own list first. A key of the same type that differs is "changed" and needs an explicit
   "Replace key". Lines imported from `known_hosts` are used only when Varco has no entry of that type;
   `@revoked` lines block a key. No host certificates are negotiated.
+- Settings > Trusted host keys lists each trusted key with its SHA-256 fingerprint, with a delete for each
+  key and a clear for the imported lines. A server delete also deletes the host keys of its host and port
+  when no other server uses them. After a delete, the next connection asks again (trust on first use).
 - Private keys: Keystore keys sign inside the hardware (`Signature` with the Keystore key). YubiKey keys sign
   on the YubiKey after a check that the slot holds the expected public key, and only then is the PIN sent.
   Imported keys that the Keystore cannot hold are stored in the encrypted store (kind `FILE`).

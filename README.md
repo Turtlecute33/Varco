@@ -73,7 +73,8 @@ Supported keys: RSA, ECDSA P-256, and Ed25519 on firmware 5.7 and later.
 - **Strict host key check.** A new host key needs your yes, and Varco shows its SHA-256
   fingerprint. If a known server shows a different key of the same type, Varco stops. Only
   "Replace key" lets the connection continue. Varco also uses the `known_hosts` lines that you
-  import, and `@revoked` lines block a key.
+  import, and `@revoked` lines block a key. Settings > Trusted host keys shows each key with its
+  fingerprint; you can delete a key or clear the imported lines.
 - **Keys in the secure chip.** The Android Keystore (StrongBox or TEE) makes and keeps the key.
   No app can read or copy it, also not Varco. Imported keys move into the chip when the phone
   can hold their type. As an option, a key can ask for a fingerprint or the screen lock on each
