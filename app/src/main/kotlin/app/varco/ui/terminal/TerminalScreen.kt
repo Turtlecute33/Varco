@@ -50,6 +50,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.varco.app
 import app.varco.data.Server
+import app.varco.data.Settings.Companion.MAX_FONT
+import app.varco.data.Settings.Companion.MIN_FONT
 import app.varco.ssh.Shell
 import app.varco.term.Scheme
 import app.varco.term.Schemes
@@ -210,9 +212,6 @@ fun TerminalScreen(nav: Navigator) {
 
 private fun fontPx(sp: Int, metrics: android.util.DisplayMetrics) =
     TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp.toFloat(), metrics).toInt()
-
-private const val MIN_FONT = 6
-private const val MAX_FONT = 32
 
 private fun dotColor(state: Shell.State, scheme: Scheme) = when (state) {
     Shell.State.Connecting -> Color(scheme.ansi[3])

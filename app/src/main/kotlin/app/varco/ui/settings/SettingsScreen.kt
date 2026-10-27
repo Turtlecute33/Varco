@@ -55,6 +55,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.varco.BuildConfig
 import app.varco.app
 import app.varco.data.Settings
+import app.varco.data.Settings.Companion.MAX_FONT
+import app.varco.data.Settings.Companion.MIN_FONT
 import app.varco.importer.Importer
 import app.varco.term.Scheme
 import app.varco.term.Schemes
@@ -93,7 +95,8 @@ fun SettingsScreen(nav: Navigator) {
                 }
             }
             ListRow(title = "Font size", subtitle = "${s.fontSize} sp · pinch the terminal to change it too") {}
-            val slider = rememberSliderState(s.fontSize.toFloat(), 15, 8f..24f)
+            // One step for each sp, in the same range as pinch zoom.
+            val slider = rememberSliderState(s.fontSize.toFloat(), MAX_FONT - MIN_FONT - 1, MIN_FONT.toFloat()..MAX_FONT.toFloat())
             // Pinch zoom in the terminal changes the size too.
             LaunchedEffect(s.fontSize) { slider.value = s.fontSize.toFloat() }
             Slider(

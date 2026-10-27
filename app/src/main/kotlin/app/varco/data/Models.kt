@@ -89,4 +89,10 @@ data class Settings(
     val serverClipboard: Boolean = false,
     /** Lines kept in scrollback. */
     val scrollback: Int = 5000,
-)
+) {
+    companion object {
+        /** Terminal font size range in sp, for the Settings slider and for pinch zoom. */
+        const val MIN_FONT = 6
+        const val MAX_FONT = 32
+    }
+}
