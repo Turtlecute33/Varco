@@ -19,7 +19,10 @@ import android.os.SystemClock
 object SensitiveClip {
     private val main = Handler(Looper.getMainLooper())
 
-    /** [ClipDescription.getTimestamp] of the clip that Varco copied; null when nothing waits. */
+    /** True while a clear waits. */
+    private var pending = false
+
+    /** [ClipDescription.getTimestamp] of Varco's clip; null when Varco could not read it (no focus). */
     private var copiedAt: Long? = null
     private var dueAt = 0L
 
@@ -28,6 +31,7 @@ object SensitiveClip {
         val clip = ClipData.newPlainText(label, text)
         clip.description.extras = PersistableBundle().apply { putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true) }
         clipboard.setPrimaryClip(clip)
+        pending = true
         copiedAt = clipboard.primaryClipDescription?.timestamp
         dueAt = SystemClock.elapsedRealtime() + CLEAR_AFTER_MS
         val appContext = context.applicationContext
@@ -40,12 +44,13 @@ object SensitiveClip {
      * Also call when the window gets the focus.
      */
     fun clearIfDue(context: Context) {
-        val at = copiedAt ?: return
-        if (SystemClock.elapsedRealtime() < dueAt) return
+        if (!pending || SystemClock.elapsedRealtime() < dueAt) return
+        val at = copiedAt
         val clipboard = context.clipboard()
         // Null in the background (or when the clipboard is empty).
         val current = clipboard.primaryClipDescription
-        if (current == null || current.timestamp == at) clipboard.clearPrimaryClip()
+        if (current == null || at == null || current.timestamp == at) clipboard.clearPrimaryClip()
+        pending = false
         copiedAt = null
     }
 
