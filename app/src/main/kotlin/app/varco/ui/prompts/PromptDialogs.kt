@@ -49,6 +49,7 @@ import app.varco.app
 import app.varco.ssh.Ask
 import app.varco.ui.components.Icons
 import com.yubico.yubikit.core.smartcard.SmartCardConnection
+import kotlinx.coroutines.delay
 import java.io.IOException
 
 /** Shows the oldest open question of any connection (or of an import) as a dialog. */
@@ -86,6 +87,12 @@ fun PromptDialogs() {
 @Composable
 private fun HostKeyDialog(ask: Ask.HostKey) {
     val where = if (ask.port == 22) ask.host else "${ask.host}:${ask.port}"
+    // The next question shows in the same place: a tap meant for the last one must not trust this key.
+    var armed by remember(ask) { mutableStateOf(false) }
+    LaunchedEffect(ask) {
+        delay(500)
+        armed = true
+    }
     AlertDialog(
         onDismissRequest = {},
         icon = { Icon(if (ask.changed) Icons.Warning else Icons.Server, null) },
@@ -110,13 +117,14 @@ private fun HostKeyDialog(ask: Ask.HostKey) {
             if (ask.changed) {
                 Button(
                     onClick = { ask.answer(true) },
+                    enabled = armed,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError,
                     ),
                 ) { Text("Replace key") }
             } else {
-                TextButton(onClick = { ask.answer(true) }) { Text("Trust") }
+                TextButton(onClick = { ask.answer(true) }, enabled = armed) { Text("Trust") }
             }
         },
         dismissButton = { TextButton(onClick = { ask.answer(false) }) { Text("Cancel") } },
