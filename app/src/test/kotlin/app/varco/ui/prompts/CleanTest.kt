@@ -10,6 +10,11 @@ class CleanTest {
     }
 
     @Test
+    fun removesMarksAndZeroWidthCharacters() {
+        assertEquals("root@host", clean("\u200froot\u200b@\u200d\u061chost\ufeff\u00ad"))
+    }
+
+    @Test
     fun keepsAtMost500Characters() {
         assertEquals(500, clean("x".repeat(2000)).length)
     }

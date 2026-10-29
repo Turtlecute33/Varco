@@ -195,9 +195,9 @@ private fun InteractiveDialog(ask: Ask.Interactive) {
     LaunchedEffect(ask) { if (ask.prompts.isNotEmpty()) focus.requestFocus() }
 }
 
-/** Server text for a dialog: no control characters, no bidi overrides or isolates, at most 500 characters. */
+/** Server text for a dialog or a tab title: no control or format characters (bidi, zero width), at most 500 characters. */
 internal fun clean(text: String): String =
-    printable(text).filterNot { it in '\u202a'..'\u202e' || it in '\u2066'..'\u2069' }.take(500)
+    printable(text).filterNot { it.category == CharCategory.FORMAT }.take(500)
 
 /** A dialog for one secret (PIN or passphrase). The answer is a CharArray that the caller wipes. */
 @Composable

@@ -495,8 +495,14 @@ public final class TerminalEmulator {
      * @param length the number of bytes in the array to process
      */
     public void append(byte[] buffer, int length) {
-        for (int i = 0; i < length; i++)
-            processByte(buffer[i]);
+        for (int i = 0; i < length; i++) {
+            try {
+                processByte(buffer[i]);
+            } catch (RuntimeException e) {
+                // A bad sequence must not stop the app (this runs on the main thread). Drop it and continue.
+                finishSequence();
+            }
+        }
     }
 
     private void processByte(byte byteToProcess) {
@@ -744,6 +750,9 @@ public final class TerminalEmulator {
                                 int left = Math.min(getArg(1, 1, true) - 1, effectiveRightMargin) + effectiveLeftMargin;
                                 int bottom = Math.min(getArg(2, mRows, true) + 1, effectiveBottomMargin - 1) + effectiveTopMargin;
                                 int right = Math.min(getArg(3, mColumns, true) + 1, effectiveRightMargin - 1) + effectiveLeftMargin;
+                                // The margins can move the rectangle past the screen.
+                                bottom = Math.min(bottom, mRows);
+                                right = Math.min(right, mColumns);
                                 if (mArgIndex >= 4) {
                                     if (mArgIndex >= mArgs.length) mArgIndex = mArgs.length - 1;
                                     for (int i = 4; i <= mArgIndex; i++) {
@@ -2120,20 +2129,15 @@ public final class TerminalEmulator {
                     mColors.reset();
                     mSession.onColorsChanged();
                 } else {
-                    int lastIndex = 0;
-                    for (int charIndex = 0; ; charIndex++) {
-                        boolean endOfInput = charIndex == textParameter.length();
-                        if (endOfInput || textParameter.charAt(charIndex) == ';') {
-                            try {
-                                int colorToReset = Integer.parseInt(textParameter.substring(lastIndex, charIndex));
+                    for (String part : textParameter.split(";")) {
+                        try {
+                            int colorToReset = Integer.parseInt(part);
+                            if (colorToReset >= 0 && colorToReset <= 255) {
                                 mColors.reset(colorToReset);
                                 mSession.onColorsChanged();
-                                if (endOfInput) break;
-                                charIndex++;
-                                lastIndex = charIndex;
-                            } catch (NumberFormatException e) {
-                                // Ignore.
                             }
+                        } catch (NumberFormatException e) {
+                            // Ignore.
                         }
                     }
                 }

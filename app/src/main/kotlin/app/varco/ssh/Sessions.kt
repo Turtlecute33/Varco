@@ -8,6 +8,7 @@ import android.os.VibratorManager
 import app.varco.data.Server
 import app.varco.data.Store
 import app.varco.ui.components.SensitiveClip
+import app.varco.ui.prompts.clean
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
 import com.termux.view.TerminalView
@@ -62,7 +63,7 @@ class Sessions(private val context: Context, private val store: Store, private v
         }
 
         override fun onTitleChanged(changedSession: TerminalSession) {
-            shellOf(changedSession)?.title?.value = changedSession.title
+            shellOf(changedSession)?.title?.value = changedSession.title?.let(::clean)?.ifBlank { null }
         }
 
         override fun onCopyTextToClipboard(session: TerminalSession, text: String, fromServer: Boolean) {

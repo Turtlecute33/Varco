@@ -28,3 +28,6 @@ Changed for Varco, 2026-10:
 - Fixes from termux-app master: `30ebb2dee3` (the termcap names `kN` and `kP` give Page Down and Page Up),
   `47c473f9be` (an erase to the end of a line clears its line wrap), `5532cc4f88` (`TerminalRow.mSpaceUsed` is an `int`).
 - `TerminalBuffer.resize()` with a column change makes only the screen rows, not a row for each transcript line.
+- OSC 104 resets only colors 0-255 and ignores a token that is not a number. DECCARA and DECRARA stay on the
+  screen when margins are set. `TerminalEmulator.append()` drops a sequence that causes an exception, so that bad
+  server output cannot stop the app.
