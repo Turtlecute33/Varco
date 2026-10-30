@@ -38,7 +38,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Safety**: The store.bin format, the Vault key and alias, and the AtomicFile write sequence stay the same. The review lines 79-83 do not change. The fix applies their rule to one more line. Line 84 is not from a Report commit. The log has only the exception class, as the owner rules for release logs require. No dependency.
 - **Verify**: Test on the emulator only. Make a debug build, run `adb shell run-as app.varco.debug chmod 500 files`, then open a server. Before the fix, the process stops. After the fix, logcat shows only 'Store write failed: IOException'. Then run `chmod 700 files`. The trigger is rare, but while it is true, each connect and each setting change crashes the app.
 - **Effort**: S. **Risk**: low. **Net lines**: about +2 (estimate).
-- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures). Not checked: no unit test for the failed create (AtomicFile is an Android stub in unit tests), and no emulator run of the chmod 500 test in Verify.
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures). Not checked: no unit test for the failed create (AtomicFile is an Android stub in unit tests), and no emulator run of the chmod 500 test in Verify. Emulator (2026-10-30): pass. With chmod 500, a connect and two setting changes logged only 'Store write failed: IOException', and the app stayed open. After the mode was restored (771 on the emulator, not 700), the next write and a restart kept the data.
 - **Status**: applied
 
 ### VARCO-OPT-02: Remove the dead "More…" item from the terminal text-selection toolbar
@@ -51,7 +51,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Safety**: Copy still goes through copySelection to onCopyTextToClipboard and SensitiveClip. The menu Paste still calls onPasteTextFromClipboard. Both lines stay. No security-review lines, storage, preference or key code change. It removes code and adds no dependency.
 - **Verify**: Build and unit tests, then on the emulator: long-press in a session. The toolbar shows Copy and Paste and no overflow button. Copy and Paste still work. A right click with a mouse in vim does not send a click.
 - **Effort**: S. **Risk**: low. **Net lines**: about -40 (estimate).
-- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). `./gradlew :app:assembleRelease` passed: mapping.txt has no StoredSelectedText, onContextMenuClosed or ACTION_MORE, and resources.txt and `apkanalyzer resources names` have no text_selection_more. Not checked: no emulator run of the toolbar, Copy, Paste and right-click test in Verify.
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). `./gradlew :app:assembleRelease` passed: mapping.txt has no StoredSelectedText, onContextMenuClosed or ACTION_MORE, and resources.txt and `apkanalyzer resources names` have no text_selection_more. Emulator (2026-10-30): pass. The toolbar shows only Copy and Paste, with no overflow button. Copy and Paste work. Not checked: the right click in vim (no mouse on the emulator).
 - **Status**: applied
 
 ### VARCO-OPT-03: Ship only English resources and exclude META-INF/*.version files
@@ -65,7 +65,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Verify**: After the build, `apkanalyzer resources configs --type string` on the new APK lists only default plus en-rAU/CA/GB/IN/XC. `unzip -l` shows no *.version entry, and META-INF/services stays. Install on the emulator and open the main screens.
 - **Effort**: S. **Risk**: low. **Net lines**: about +7 (estimate).
 - **Owner decision**: 2026-10-30. English-only library strings in all apps, MegaGlass included. Apply it. Add a separate excludes line for META-INF/*.version. Do not edit the existing excludes lines from the security review. Make two commits: the locale filter, then the version-files line.
-- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). `./gradlew :app:assembleRelease` passed: `apkanalyzer resources configs --type string` lists only default (en-rAU/CA/GB/IN/XC also go, as in Fonte; the default strings are English). resources.arsc is 14,400 B (was 156,148 B). `unzip -l` shows no *.version entry, and META-INF/services stays. The release APK is 3,497,084 B (was 3,649,452 B, local build). Not checked: no emulator run of the main screens, and the README size line is not updated here.
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). `./gradlew :app:assembleRelease` passed: `apkanalyzer resources configs --type string` lists only default (en-rAU/CA/GB/IN/XC also go, as in Fonte; the default strings are English). resources.arsc is 14,400 B (was 156,148 B). `unzip -l` shows no *.version entry, and META-INF/services stays. The release APK is 3,497,084 B (was 3,649,452 B, local build). Emulator (2026-10-30): pass. The installed debug APK has only default string configs, no *.version entry, and META-INF/services. The main screens open with no crash. With an it-IT app locale, the Compose content descriptions are English. Not checked: the README size line is not updated here, and the spoken On/Off words need TalkBack on a phone.
 - **Status**: applied
 
 ### VARCO-OPT-04: Make Back end the terminal text selection, not leave the terminal
@@ -78,7 +78,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Safety**: Back handling in the UI only. Copy (SensitiveClip), paste (cc91e7f), the input queue, host keys, app lock, storage and preferences do not change. BackHandler comes from activity-compose, which the app already uses.
 - **Verify**: Not run. Emulator check: long-press to select, then Back with the keyboard hidden. The selection ends and the terminal stays. With the keyboard shown, the first Back closes the keyboard and the second ends the selection. Back with no selection still goes to Home.
 - **Effort**: S. **Risk**: low. **Net lines**: about +5 (estimate).
-- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). No unit test: the change only connects a callback to Compose state and a BackHandler. Not checked: no run-time check on an emulator or device of the Back steps in Verify.
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). No unit test: the change only connects a callback to Compose state and a BackHandler. Emulator (2026-10-30): pass. All Back steps in Verify work, and the edge back gesture during a selection also ends only the selection.
 - **Status**: applied
 
 ### VARCO-OPT-05: Show the end of the path in the Files top bar
@@ -91,7 +91,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Safety**: Text layout only. Path handling, SFTP, glob escaping (5099230) and storage do not change.
 - **Verify**: Emulator check: open a deep folder in Files. The title starts with '…' and ends with the folder name. Other screens with long titles still cut at the end.
 - **Effort**: S. **Risk**: low. **Net lines**: about +1 (estimate).
-- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). No unit test: the change is text layout only. No release build: the change touches no build file, resource or manifest. Not checked: no run-time check on an emulator or device of the title in a deep folder, or of the end cut on other screens.
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). No unit test: the change is text layout only. No release build: the change touches no build file, resource or manifest. Emulator (2026-10-30): pass. A deep folder shows as '…/varco/ui/terminal'. A long key name is cut at the end. Side effect: when Files has no path yet, the server name in the title is now also cut at the start.
 - **Status**: applied
 
 ### VARCO-OPT-06: Answer the YubiKey prompt with an error, not a crash, when the USB key has no smart-card interface
@@ -117,7 +117,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Safety**: lit(), the link-stat limit, upload and download do not change. The change only removes a repeated name from the list that the screen shows. No storage, preference or key data. No dependency.
 - **Verify**: OpenSSH on a normal Linux filesystem rarely sends a name two times, so the trigger is a hostile or unusual server. A unit test needs a fake ChannelSftp. If there is no such test, rely on code review and a normal Files listing on the emulator.
 - **Effort**: S. **Risk**: low. **Net lines**: about 0 (estimate).
-- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). join() puts the name after a fixed folder path, so different names give different keys. No unit test: Sftp opens a jsch channel in its constructor, and a fake ChannelSftp is not a few lines. No release build: the change touches no build file, resource or manifest. Not checked: no run-time check of a Files listing on a device or emulator, and no test with a server that sends a name two times.
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). join() puts the name after a fixed folder path, so different names give different keys. No unit test: Sftp opens a jsch channel in its constructor, and a fake ChannelSftp is not a few lines. No release build: the change touches no build file, resource or manifest. Emulator (2026-10-30): pass, with a local fake SFTP server. A normal listing shows all entries. A listing with two repeated names shows each name once, and the app stays open.
 - **Status**: applied
 
 ### VARCO-OPT-08: Delete the unused autofill hooks in TerminalView
@@ -131,7 +131,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Verify**: Build and unit tests, then on the emulator: press Back during a text selection, and type into a session. Make sure that the system shows no autofill suggestion over the terminal.
 - **Effort**: S. **Risk**: low. **Net lines**: about -160 (estimate).
 - **Owner decision**: 2026-10-30. The owner approves the setImportantForAutofill(IMPORTANT_FOR_AUTOFILL_NO) flag in place of the getImportantForAutofill override. Do not edit the VARCO-PRIV-001 lines.
-- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). javap on the debug TerminalView class shows no autofill member, and the constructor calls setImportantForAutofill after setAccessibilityDataSensitive. git grep finds no other autofill code in app/ or terminal/. No unit test: the change removes dead code and sets one View flag. No release build: the change touches no build file, resource or manifest, so the dex size gain is not measured. Not checked: no run-time check on a device or emulator (Back during a text selection, typing into a session, no autofill suggestion over the terminal).
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). javap on the debug TerminalView class shows no autofill member, and the constructor calls setImportantForAutofill after setAccessibilityDataSensitive. git grep finds no other autofill code in app/ or terminal/. No unit test: the change removes dead code and sets one View flag. No release build: the change touches no build file, resource or manifest, so the dex size gain is not measured. Emulator (2026-10-30): pass. With the Google autofill service on, typing into a session made no autofill session for the terminal, and no suggestion showed. Back during a selection works (see VARCO-OPT-04).
 - **Status**: applied
 
 ### VARCO-OPT-09: Let the missing-key guard do the only back step after a key delete
@@ -144,7 +144,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Safety**: The Keystore delete in the app scope (review lines 123-124) and the store update stay the same. Only one navigation call goes. No storage format, preference key or key handling change. No dependency.
 - **Verify**: Code-path analysis only. Not run. Emulator check before and after: Keys > a key > Delete. Today it should show Home. After the change it must show the Keys list without the key.
 - **Effort**: S. **Risk**: low. **Net lines**: about -1 (estimate).
-- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). The onConfirm handler now only removes the key and closes the dialog; the key == null guard is the only back step. No unit test: the change is in a Compose screen, and the test suite has no Compose or UI tests. No release build: the change touches no build file, resource or manifest. Not checked: no run-time check on a device or emulator (Keys > a key > Delete must show the Keys list without the key).
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). The onConfirm handler now only removes the key and closes the dialog; the key == null guard is the only back step. No unit test: the change is in a Compose screen, and the test suite has no Compose or UI tests. No release build: the change touches no build file, resource or manifest. Emulator (2026-10-30): pass, two times. After Delete, the Keys list shows without the key, and the next Back goes to Home.
 - **Status**: applied
 
 ### VARCO-OPT-10: Apply the colour scheme only when it changes, so that colours set by the server stay
@@ -155,9 +155,9 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Benefit**: Colours that the server sets with OSC 4/10/11/12 stay when the user leaves the terminal and comes back. A change of scheme still resets all tabs as before.
 - **Evidence**: TerminalColors.reset() (:28-30) copies all NUM_INDEXED_COLORS (259) from the shared defaults. TerminalRenderer:66 draws with mEmulator.mColors.mCurrentColors. TerminalScreen leaves the composition on navigation (AppNav.kt NavDisplay) and while the app lock shows (MainActivity.kt:56-61). grep: nothing else calls TermLook.apply. `git log -L 15,22` on TermLook.kt shows only 62010b9. In a new process, applied is null, so the first entry still applies the scheme.
 - **Safety**: Only colour state in memory changes. No storage, preference key, stored scheme, schema or key handling. OSC 52 and the other sequences that 670f85e filters are not involved. No dependency.
-- **Verify**: Emulator check: in a tab, run `printf '\e]11;#330000\a'`, open Files from the session sheet and go back. Today the background goes back to the scheme colour. After the change it stays dark red. Then select another scheme in Settings. All tabs take the new colours.
+- **Verify**: Emulator check: in a tab, run `printf '\e]10;#ff8800\a\e]4;4;#00ff00\a'`, open Files from the session sheet and go back. Before the change, the text colour and palette colour 4 go back to the scheme colours. After the change, the text stays orange and colour 4 stays green. Then select another scheme in Settings. All tabs take the new colours. Do not use OSC 11 for this check. TerminalRenderer paints a cell background only when it differs from palette[BACKGROUND], and the visible background is the Compose colour of the scheme. So OSC 11 has no visible effect in Varco, on any build.
 - **Effort**: S. **Risk**: low. **Net lines**: about +3 (estimate).
-- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). Not checked: no unit test (TermLook has no test suite, and the check needs a TerminalSession with an emulator), and no emulator run of the OSC 11 and scheme-change test in Verify.
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). Not checked: no unit test (TermLook has no test suite, and the check needs a TerminalSession with an emulator), and no emulator run of the OSC 11 and scheme-change test in Verify. Emulator (2026-10-30): pass. OSC 10 (orange text) and OSC 4 (green colour 4) stay after Files, Home and Settings and back. A scheme change resets all tabs. The old OSC 11 step failed, but the cause is a wrong check step, not a defect: OSC 11 has no visible effect in Varco. Verify now uses OSC 10 and OSC 4.
 - **Status**: applied
 
 ### VARCO-OPT-11: Put the arrow keys on the right of the key bar, in the inverted-T layout of a computer keyboard
@@ -170,7 +170,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Verify**: Build and unit tests. Then the owner checks on a phone, in portrait and landscape: ↑ is directly above ↓, arrows repeat while held, a long press on -, / and | types _, \ and &, CTRL and ALT lock, and TalkBack speaks each key name.
 - **Effort**: S to M. **Risk**: low. **Net lines**: about +10 (estimate).
 - **Owner decision**: 2026-10-30. Put the arrow keys on the right side of the key bar, in the layout of a computer keyboard: two rows, ↑ on the top row above ↓, and ←, ↓ and → on the bottom row. The other keys stay on the left in their current order. Keep the touch targets. The layout is not stored, so no stored format or preference key changes.
-- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). Not checked: no unit test (the change is Compose layout only), and no run-time check of the UI on a device or emulator (portrait, landscape, key repeat, long press, CTRL/ALT lock, TalkBack names and order).
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). Not checked: no unit test (the change is Compose layout only). Emulator (2026-10-30): pass. ↑ is directly above ↓ in portrait and landscape. The arrows send the correct keys and repeat while held. A long press on -, / and | types _, \ and &. CTRL and ALT apply once on tap and lock on long press. Not checked: TalkBack speech and swipe order (adb cannot drive TalkBack).
 - **Status**: applied
 
 ## Areas in good shape
@@ -198,15 +198,49 @@ Full check on 2026-10-30 at commit 86f55ca (branch optimize). Each command ran a
   - `./gradlew :app:assembleDebug`: pass.
   - `./gradlew :app:assembleRelease`: pass. apksigner verifies the signature (v2 scheme). The APK has no META-INF/*.version entry, and resources.arsc is 14,400 B.
 - **Not applied**: none. Each item has one commit, and VARCO-OPT-03 has two (as the owner asked).
-- **Owner checks by hand**: no check used a device or an emulator. No item needs a check on Windows. Do these checks on a phone with a debug build:
-  - VARCO-OPT-01: run `adb shell run-as app.varco.debug chmod 500 files`, then open a server. The app stays open, and logcat shows only 'Store write failed: IOException'. Then run `chmod 700 files`.
-  - VARCO-OPT-02: long-press in a session. The toolbar shows Copy and Paste and no overflow button. Copy and Paste work. A right click with a mouse in vim does not send a click.
-  - VARCO-OPT-03: open the main screens. Compose TalkBack words (Close sheet, On, Off) are now English on a non-English phone.
-  - VARCO-OPT-04: select text, then Back with the keyboard hidden. The selection ends and the terminal stays. With the keyboard shown, the first Back closes the keyboard and the second ends the selection. Back with no selection goes to Home.
-  - VARCO-OPT-05: open a deep folder in Files. The title starts with '…' and ends with the folder name. Long titles on other screens cut at the end.
-  - VARCO-OPT-06: plug in a FIDO-only key during a PIV prompt. The tab shows 'Unsupported connection type' and the app stays open. A normal YubiKey sign-in over NFC and USB still works.
-  - VARCO-OPT-07: a normal Files listing still shows all entries.
-  - VARCO-OPT-08: type into a session. The system shows no autofill suggestion over the terminal.
-  - VARCO-OPT-09: Keys > a key > Delete. The Keys list shows, without the key.
-  - VARCO-OPT-10: in a tab, run `printf '\e]11;#330000\a'`, open Files and go back. The background stays dark red. Then select another scheme in Settings. All tabs take the new colours.
-  - VARCO-OPT-11: in portrait and landscape, ↑ is directly above ↓, the arrows repeat while held, a long press on -, / and | types _, \ and &, and CTRL and ALT lock. TalkBack speaks each key name, reads the left keys first and then the four arrows.
+- **Owner checks by hand**: the build checks above used no device. The emulator checks are in "Device checks (2026-10-30)" below. The checks that stay for the owner are in its list "Still for the owner". No item needs a check on Windows.
+
+### Device checks (2026-10-30)
+
+Method: a debug build (0.2.1, versionCode 5) of branch optimize at cb4159c, on an emulator with API 37 (Android 17). No real account or server. A local fake SSH and SFTP server gave the session and Files checks, and it was removed after the run.
+
+| Item | Check | Result |
+|---|---|---|
+| VARCO-OPT-01 | Files folder read-only (chmod 500), open a server: app stays open, log has only 'Store write failed: IOException' | pass |
+| VARCO-OPT-01 | Change a setting while the folder is read-only | pass |
+| VARCO-OPT-01 | Restore the folder mode: the next write and a restart keep the data | pass (the mode was 771, not 700) |
+| VARCO-OPT-02 | Long press: toolbar shows only Copy and Paste, no overflow button | pass |
+| VARCO-OPT-02 | Copy and Paste work | pass |
+| VARCO-OPT-02 | Right click with a mouse in vim sends no click | not possible (no mouse) |
+| VARCO-OPT-03 | APK has only default string configs, no *.version files, keeps META-INF/services | pass |
+| VARCO-OPT-03 | Open the main screens | pass |
+| VARCO-OPT-03 | Compose accessibility words are English with a non-English locale | pass (content descriptions with an it-IT app locale; speech not checked) |
+| VARCO-OPT-04 | Back with the keyboard hidden ends the selection; the terminal stays | pass |
+| VARCO-OPT-04 | Keyboard shown: first Back closes it, second Back ends the selection | pass |
+| VARCO-OPT-04 | Back with no selection goes to Home; edge gesture ends only the selection | pass |
+| VARCO-OPT-05 | Deep folder title starts with '…' and ends with the folder name | pass |
+| VARCO-OPT-05 | Long titles on other screens cut at the end | pass |
+| VARCO-OPT-06 | FIDO-only key during a PIV prompt; YubiKey sign-in over NFC and USB | not possible (no USB keys or NFC) |
+| VARCO-OPT-07 | A normal Files listing shows all entries | pass |
+| VARCO-OPT-07 | A listing with repeated names does not crash the app | pass |
+| VARCO-OPT-08 | No autofill suggestion over the terminal while typing | pass |
+| VARCO-OPT-09 | Keys > a key > Delete shows the Keys list without the key | pass |
+| VARCO-OPT-10 | OSC 10 and OSC 4 colours stay after Files, Home and Settings and back | pass |
+| VARCO-OPT-10 | Old Verify step: OSC 11 background stays dark red | fail (wrong check step, not a defect: OSC 11 has no visible effect in Varco; Verify now uses OSC 10 and OSC 4) |
+| VARCO-OPT-10 | Another scheme in Settings: all tabs take the new colours | pass |
+| VARCO-OPT-11 | Layout of the key bar | pass |
+| VARCO-OPT-11 | ↑ directly above ↓ in portrait and landscape | pass |
+| VARCO-OPT-11 | Each arrow sends the correct key and repeats while held | pass (about 11 per second on the emulator) |
+| VARCO-OPT-11 | Long press on -, / and \| types _, \\ and & | pass |
+| VARCO-OPT-11 | CTRL and ALT apply once on tap and lock on long press | pass |
+| VARCO-OPT-11 | TalkBack speaks each key name and reads the left keys, then the arrows | not possible (adb cannot drive TalkBack; the accessibility tree has the names in the correct order) |
+
+Crashes and ANRs: the crash log was empty. The one ANR of the debug app came from another app on the shared emulator, which took the window focus, and not from a Varco hang.
+
+Still for the owner (on a phone with a debug build):
+
+- VARCO-OPT-02: a right click with a mouse in vim does not send a click.
+- VARCO-OPT-03: with the phone set to a non-English language and TalkBack on, the spoken Compose words (Close sheet, On, Off) are English.
+- VARCO-OPT-05: decide if the server name in the Files title (no path yet, or no connection) can also cut at the start.
+- VARCO-OPT-06: plug in a FIDO-only key during a PIV prompt. The tab shows 'Unsupported connection type' and the app stays open. A normal YubiKey sign-in over NFC and USB still works.
+- VARCO-OPT-11: TalkBack speaks each key name and reads the left keys first, then the four arrows. Also check the haptic tick, the key repeat rate and feel, and the key widths on the real screen in portrait and landscape.
