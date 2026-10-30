@@ -81,7 +81,10 @@ class Store(dir: File, private val vault: Vault, private val scope: CoroutineSco
             Log.w(TAG, "Store encrypt failed: ${e.javaClass.simpleName}")
             return@withLock
         }
-        val out = file.startWrite()
+        val out = runCatching { file.startWrite() }.getOrElse { e ->
+            Log.w(TAG, "Store write failed: ${e.javaClass.simpleName}")
+            return@withLock
+        }
         try {
             out.write(bytes)
             file.finishWrite(out)

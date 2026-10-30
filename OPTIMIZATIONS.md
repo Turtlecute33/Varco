@@ -16,7 +16,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 
 | ID | Finding | Area | Effort | Risk | Status |
 |---|---|---|---|---|---|
-| VARCO-OPT-01 | Catch a failed store.bin.new create in Store.save, as the encrypt step already does | stability | S | low | approved |
+| VARCO-OPT-01 | Catch a failed store.bin.new create in Store.save, as the encrypt step already does | stability | S | low | applied |
 | VARCO-OPT-02 | Remove the dead "More…" item from the terminal text-selection toolbar | ui-ux | S | low | approved |
 | VARCO-OPT-03 | Ship only English resources and exclude META-INF/*.version files | minimalism | S | low | approved |
 | VARCO-OPT-04 | Make Back end the terminal text selection, not leave the terminal | ui-ux | S | low | approved |
@@ -38,7 +38,8 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Safety**: The store.bin format, the Vault key and alias, and the AtomicFile write sequence stay the same. The review lines 79-83 do not change. The fix applies their rule to one more line. Line 84 is not from a Report commit. The log has only the exception class, as the owner rules for release logs require. No dependency.
 - **Verify**: Test on the emulator only. Make a debug build, run `adb shell run-as app.varco.debug chmod 500 files`, then open a server. Before the fix, the process stops. After the fix, logcat shows only 'Store write failed: IOException'. Then run `chmod 700 files`. The trigger is rare, but while it is true, each connect and each setting change crashes the app.
 - **Effort**: S. **Risk**: low. **Net lines**: about +2 (estimate).
-- **Status**: approved
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures). Not checked: no unit test for the failed create (AtomicFile is an Android stub in unit tests), and no emulator run of the chmod 500 test in Verify.
+- **Status**: applied
 
 ### VARCO-OPT-02: Remove the dead "More…" item from the terminal text-selection toolbar
 
