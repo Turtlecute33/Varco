@@ -20,7 +20,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 | VARCO-OPT-02 | Remove the dead "More…" item from the terminal text-selection toolbar | ui-ux | S | low | applied |
 | VARCO-OPT-03 | Ship only English resources and exclude META-INF/*.version files | minimalism | S | low | applied |
 | VARCO-OPT-04 | Make Back end the terminal text selection, not leave the terminal | ui-ux | S | low | applied |
-| VARCO-OPT-05 | Show the end of the path in the Files top bar | ui-ux | S | low | approved |
+| VARCO-OPT-05 | Show the end of the path in the Files top bar | ui-ux | S | low | applied |
 | VARCO-OPT-06 | Answer the YubiKey prompt with an error, not a crash, when the USB key has no smart-card interface | stability | S | low | approved |
 | VARCO-OPT-07 | Drop duplicate names from an SFTP listing before the LazyColumn uses them as keys | stability | S | low | approved |
 | VARCO-OPT-08 | Delete the unused autofill hooks in TerminalView | minimalism | S | low | approved |
@@ -91,7 +91,8 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Safety**: Text layout only. Path handling, SFTP, glob escaping (5099230) and storage do not change.
 - **Verify**: Emulator check: open a deep folder in Files. The title starts with '…' and ends with the folder name. Other screens with long titles still cut at the end.
 - **Effort**: S. **Risk**: low. **Net lines**: about +1 (estimate).
-- **Status**: approved
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). No unit test: the change is text layout only. No release build: the change touches no build file, resource or manifest. Not checked: no run-time check on an emulator or device of the title in a deep folder, or of the end cut on other screens.
+- **Status**: applied
 
 ### VARCO-OPT-06: Answer the YubiKey prompt with an error, not a crash, when the USB key has no smart-card interface
 

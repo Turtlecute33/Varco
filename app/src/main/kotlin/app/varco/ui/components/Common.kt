@@ -40,11 +40,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/** A top bar with a back arrow (when [onBack] is set), a title and actions. */
+/** A top bar with a back arrow (when [onBack] is set), a title and actions. [overflow] sets where a long title is cut. */
 @Composable
-fun Bar(title: String, onBack: (() -> Unit)? = null, actions: @Composable RowScope.() -> Unit = {}) {
+fun Bar(
+    title: String,
+    onBack: (() -> Unit)? = null,
+    overflow: TextOverflow = TextOverflow.Ellipsis,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
     TopAppBar(
-        title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        title = { Text(title, maxLines = 1, overflow = overflow) },
         navigationIcon = {
             if (onBack != null) IconButton(onClick = onBack) { Icon(Icons.Back, contentDescription = "Back") }
         },

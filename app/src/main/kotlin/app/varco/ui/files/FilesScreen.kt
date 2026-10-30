@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -240,7 +241,8 @@ fun FilesScreen(serverId: String, nav: Navigator) {
 
     Scaffold(
         topBar = {
-            Bar(model.path ?: server?.name ?: "Files", onBack = nav::back) {
+            // Cut a long path at the start, so that the name of the open folder stays visible.
+            Bar(model.path ?: server?.name ?: "Files", onBack = nav::back, overflow = TextOverflow.StartEllipsis) {
                 IconButton(onClick = { upload.launch(arrayOf("*/*")) }, enabled = model.path != null) { Icon(Icons.Upload, contentDescription = "Upload") }
                 IconButton(onClick = { newFolder = true }, enabled = model.path != null) { Icon(Icons.NewFolder, contentDescription = "New folder") }
                 Box {
