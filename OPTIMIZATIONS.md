@@ -186,3 +186,27 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - UI: one Navigator with predictive back, empty states with actions, red confirm dialogs for destructive actions, focused prompt dialogs, an accessible extra-key bar and lazy-list keys. The Files keys can collide (VARCO-OPT-07).
 - Recorded decisions stay as they are: VARCO-PERF-001 (JSch keep rule), VARCO-UX-010 (keepalive, device test first) and the one-tap tab close (VARCO-UX-008).
 - Artifact: app-release.apk 0.2.1 (3,649,940 B) matches HEAD.
+
+## Results
+
+Full check on 2026-10-30 at commit 86f55ca (branch optimize). Each command ran alone, with JAVA_HOME=/opt/homebrew/opt/openjdk@21.
+
+- **Size**: the release APK (0.2.1, versionCode 5) went from 3,649,940 B to 3,496,548 B. That is 153,392 B (about 4.2%) less. Most of it comes from VARCO-OPT-03. The README size line now says about 3.5 MB.
+- **Checks**:
+  - `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest`: pass (51 tests, 0 failures; :terminal has no unit tests).
+  - `./gradlew :app:lintDebug`: pass. 0 errors, 2 warnings (AndroidGradlePluginVersion: AGP 9.5.0 is available, in gradle/libs.versions.toml). This branch does not change that file.
+  - `./gradlew :app:assembleDebug`: pass.
+  - `./gradlew :app:assembleRelease`: pass. apksigner verifies the signature (v2 scheme). The APK has no META-INF/*.version entry, and resources.arsc is 14,400 B.
+- **Not applied**: none. Each item has one commit, and VARCO-OPT-03 has two (as the owner asked).
+- **Owner checks by hand**: no check used a device or an emulator. No item needs a check on Windows. Do these checks on a phone with a debug build:
+  - VARCO-OPT-01: run `adb shell run-as app.varco.debug chmod 500 files`, then open a server. The app stays open, and logcat shows only 'Store write failed: IOException'. Then run `chmod 700 files`.
+  - VARCO-OPT-02: long-press in a session. The toolbar shows Copy and Paste and no overflow button. Copy and Paste work. A right click with a mouse in vim does not send a click.
+  - VARCO-OPT-03: open the main screens. Compose TalkBack words (Close sheet, On, Off) are now English on a non-English phone.
+  - VARCO-OPT-04: select text, then Back with the keyboard hidden. The selection ends and the terminal stays. With the keyboard shown, the first Back closes the keyboard and the second ends the selection. Back with no selection goes to Home.
+  - VARCO-OPT-05: open a deep folder in Files. The title starts with '…' and ends with the folder name. Long titles on other screens cut at the end.
+  - VARCO-OPT-06: plug in a FIDO-only key during a PIV prompt. The tab shows 'Unsupported connection type' and the app stays open. A normal YubiKey sign-in over NFC and USB still works.
+  - VARCO-OPT-07: a normal Files listing still shows all entries.
+  - VARCO-OPT-08: type into a session. The system shows no autofill suggestion over the terminal.
+  - VARCO-OPT-09: Keys > a key > Delete. The Keys list shows, without the key.
+  - VARCO-OPT-10: in a tab, run `printf '\e]11;#330000\a'`, open Files and go back. The background stays dark red. Then select another scheme in Settings. All tabs take the new colours.
+  - VARCO-OPT-11: in portrait and landscape, ↑ is directly above ↓, the arrows repeat while held, a long press on -, / and | types _, \ and &, and CTRL and ALT lock. TalkBack speaks each key name, reads the left keys first and then the four arrows.
