@@ -250,18 +250,10 @@ private fun TouchDialog(ask: Ask.Touch) {
     var again by remember(ask) { mutableStateOf(false) }
     YubiKeyDiscovery(onDevice = { device ->
         busy = true
-        try {
-            val result = device.openConnection(SmartCardConnection::class.java).use { connection ->
-                runCatching { ask.use(connection) }
-            }
-            val error = result.exceptionOrNull()
-            // A link that ends during the work (key moved away): wait for the next tap.
-            if (error is IOException) again = true else ask.answer(result)
-        } catch (_: IOException) {
-            again = true
-        } finally {
-            busy = false
-        }
+        val result = runCatching { device.openConnection(SmartCardConnection::class.java).use { ask.use(it) } }
+        busy = false
+        // A link that ends during the work (key moved away): wait for the next tap.
+        if (result.exceptionOrNull() is IOException) again = true else ask.answer(result)
     }, onNfcOff = { nfcOff = true })
     AlertDialog(
         onDismissRequest = {},

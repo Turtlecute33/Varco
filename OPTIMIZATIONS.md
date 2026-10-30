@@ -21,7 +21,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 | VARCO-OPT-03 | Ship only English resources and exclude META-INF/*.version files | minimalism | S | low | applied |
 | VARCO-OPT-04 | Make Back end the terminal text selection, not leave the terminal | ui-ux | S | low | applied |
 | VARCO-OPT-05 | Show the end of the path in the Files top bar | ui-ux | S | low | applied |
-| VARCO-OPT-06 | Answer the YubiKey prompt with an error, not a crash, when the USB key has no smart-card interface | stability | S | low | approved |
+| VARCO-OPT-06 | Answer the YubiKey prompt with an error, not a crash, when the USB key has no smart-card interface | stability | S | low | applied |
 | VARCO-OPT-07 | Drop duplicate names from an SFTP listing before the LazyColumn uses them as keys | stability | S | low | approved |
 | VARCO-OPT-08 | Delete the unused autofill hooks in TerminalView | minimalism | S | low | approved |
 | VARCO-OPT-09 | Let the missing-key guard do the only back step after a key delete | stability | S | low | approved |
@@ -104,7 +104,8 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Safety**: The PIN prompt and PIN wipe in pivSign, the slot and public-key check in Piv.sign, the IOException retry, YubiKeyDiscovery, ChipKeys and key data do not change. The fix only turns an uncaught exception into the failure Result that pivSign already handles. No storage, preference or key-format change. No dependency.
 - **Verify**: The emulator cannot test USB keys. The owner must check on a device: plug in a FIDO-only key during a PIV prompt. The tab shows 'Unsupported connection type' and the app stays open. A normal YubiKey sign-in over NFC and USB still works.
 - **Effort**: S. **Risk**: low. **Net lines**: about -8 (estimate).
-- **Status**: approved
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). javap on the cached yubikit android-3.2.1 aar shows that UsbYubiKeyDevice.verifyAccess throws IllegalStateException("Unsupported connection type"). No unit test: the change is in a Compose dialog callback that needs a YubiKit device. No release build: the change touches no build file, resource or manifest. Not checked: no run-time check on a device with a FIDO-only key, or of a normal YubiKey sign-in over NFC and USB.
+- **Status**: applied
 
 ### VARCO-OPT-07: Drop duplicate names from an SFTP listing before the LazyColumn uses them as keys
 
