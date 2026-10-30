@@ -26,7 +26,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 | VARCO-OPT-08 | Delete the unused autofill hooks in TerminalView | minimalism | S | low | applied |
 | VARCO-OPT-09 | Let the missing-key guard do the only back step after a key delete | stability | S | low | applied |
 | VARCO-OPT-10 | Apply the colour scheme only when it changes, so that colours set by the server stay | ui-ux | S | low | applied |
-| VARCO-OPT-11 | Put the arrow keys on the right of the key bar, in the inverted-T layout of a computer keyboard | ui-ux | S to M | low | approved |
+| VARCO-OPT-11 | Put the arrow keys on the right of the key bar, in the inverted-T layout of a computer keyboard | ui-ux | S to M | low | applied |
 
 ### VARCO-OPT-01: Catch a failed store.bin.new create in Store.save, as the encrypt step already does
 
@@ -166,11 +166,12 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Where**: app/src/main/kotlin/app/varco/ui/terminal/ExtraKeys.kt:60-68 (KDoc with the layout), :83-107 (ExtraKeys(), the two Rows). The layout is fixed in code. No setting, preference key or stored format holds it (grep finds the key bar only in ExtraKeys.kt and its call at TerminalScreen.kt:169).
 - **Change**: Make the bar one Row with two parts. On the left, a Column with the other keys in their current order, over two rows. On the right, an arrow block of three key columns, over the same two rows. The top row of the block is an empty cell (Spacer with weight 1f), ↑ and an empty cell. The bottom row is ←, ↓ and →. Give the block 3/8 of the bar width, so that each arrow keeps the width of a row 2 key today (about 40 dp on a 360 dp screen, estimate). To keep the other keys at that width too, row 1 is the chip, ESC, TAB and CTRL, and row 2 is ALT, -, /, | and ⚡. If ALT stays in row 1, ESC, TAB, CTRL and ALT go to about 33 dp (estimate). Keep each Key, Mod and IconKey call as it is, and keep the 48 dp row height. Update the layout lines in the KDoc.
 - **Benefit**: The arrows have the layout that users know from a computer keyboard, so they find ↑ and ↓ without a look. Each key keeps a 48 dp high touch target and about the width of today's narrowest key. Trade-off: the server chip gets narrower (about 87 dp, from 119 dp on a 360 dp screen, estimate), so a long server name is cut sooner. CTRL and ALT are in different rows.
-- **Safety**: UI layout only. Lines 90 and 92-104 come from 085a13f (Report: VARCO-UX-005: TalkBack names, long-press actions, CTRL/ALT state, 48 dp rows). The owner approved this item, so these calls can move, but their arguments and semantics do not change. TalkBack reads the left keys first, then the arrows. No storage, preference key or key handling. No dependency.
+- **Safety**: UI layout only. Lines 90 and 92-104 come from 085a13f (Report: VARCO-UX-005: TalkBack names, long-press actions, CTRL/ALT state, 48 dp rows). The owner approved this item, so these calls can move, but their arguments and semantics do not change. Each part is a traversal group (isTraversalGroup), so TalkBack reads the left keys first, then the four arrows together. No storage, preference key or key handling. No dependency.
 - **Verify**: Build and unit tests. Then the owner checks on a phone, in portrait and landscape: ↑ is directly above ↓, arrows repeat while held, a long press on -, / and | types _, \ and &, CTRL and ALT lock, and TalkBack speaks each key name.
 - **Effort**: S to M. **Risk**: low. **Net lines**: about +10 (estimate).
 - **Owner decision**: 2026-10-30. Put the arrow keys on the right side of the key bar, in the layout of a computer keyboard: two rows, ↑ on the top row above ↓, and ←, ↓ and → on the bottom row. The other keys stay on the left in their current order. Keep the touch targets. The layout is not stored, so no stored format or preference key changes.
-- **Status**: approved
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). Not checked: no unit test (the change is Compose layout only), and no run-time check of the UI on a device or emulator (portrait, landscape, key repeat, long press, CTRL/ALT lock, TalkBack names and order).
+- **Status**: applied
 
 ## Areas in good shape
 

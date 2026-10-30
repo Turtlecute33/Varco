@@ -33,9 +33,11 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -58,9 +60,9 @@ interface KeySink {
 }
 
 /**
- * Two rows above the keyboard, in the terminal colours:
- * [● server ▾] ESC TAB CTRL ALT
- * ← ↓ ↑ → - / | ⚡
+ * Two rows above the keyboard, in the terminal colours. The arrows are on the right, as on a computer keyboard:
+ * [● server ▾] ESC TAB CTRL      ↑
+ * ALT - / | ⚡                 ← ↓ →
  * Arrows repeat while held. A long press on "-", "/" and "|" sends "_", "\" and "&". A tap on CTRL or ALT
  * applies it to the next key; a long press locks it.
  * Each key is a button for TalkBack, with a spoken name, the long press as an action and the CTRL/ALT state.
@@ -80,29 +82,41 @@ fun ExtraKeys(
     val fg = Color(scheme.foreground)
     val keyBg = lerp(bg, fg, 0.08f)
     val accent = Color(scheme.ansi[4])
-    Column(
+    Row(
         Modifier
             .fillMaxWidth()
             .background(lerp(bg, fg, 0.03f))
             .padding(horizontal = 4.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Row(Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Chip(chipLabel, chipDot, fg, keyBg, onChip, Modifier.weight(2.2f))
-            Key("ESC", "Escape", fg, keyBg, onTap = { sink.key(KeyEvent.KEYCODE_ESCAPE) })
-            Key("TAB", "Tab", fg, keyBg, onTap = { sink.key(KeyEvent.KEYCODE_TAB) })
-            Mod("CTRL", "Control", modifiers.ctrl, fg, keyBg, accent, bg)
-            Mod("ALT", "Alt", modifiers.alt, fg, keyBg, accent, bg)
+        // Each part is a traversal group, so TalkBack reads the left keys first, then the arrows.
+        Column(Modifier.weight(5f).semantics { isTraversalGroup = true }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Chip(chipLabel, chipDot, fg, keyBg, onChip, Modifier.weight(2.2f))
+                Key("ESC", "Escape", fg, keyBg, onTap = { sink.key(KeyEvent.KEYCODE_ESCAPE) })
+                Key("TAB", "Tab", fg, keyBg, onTap = { sink.key(KeyEvent.KEYCODE_TAB) })
+                Mod("CTRL", "Control", modifiers.ctrl, fg, keyBg, accent, bg)
+            }
+            Row(Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Mod("ALT", "Alt", modifiers.alt, fg, keyBg, accent, bg)
+                Key("-", "Minus", fg, keyBg, alt = "_", altSpoken = "Type underscore", onTap = { sink.char('-'.code) }, onLong = { sink.char('_'.code) })
+                Key("/", "Slash", fg, keyBg, alt = "\\", altSpoken = "Type backslash", onTap = { sink.char('/'.code) }, onLong = { sink.char('\\'.code) })
+                Key("|", "Vertical bar", fg, keyBg, alt = "&", altSpoken = "Type ampersand", onTap = { sink.char('|'.code) }, onLong = { sink.char('&'.code) })
+                IconKey(fg, keyBg, onSnippets)
+            }
         }
-        Row(Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Key("←", "Left arrow", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_LEFT) })
-            Key("↓", "Down arrow", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_DOWN) })
-            Key("↑", "Up arrow", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_UP) })
-            Key("→", "Right arrow", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_RIGHT) })
-            Key("-", "Minus", fg, keyBg, alt = "_", altSpoken = "Type underscore", onTap = { sink.char('-'.code) }, onLong = { sink.char('_'.code) })
-            Key("/", "Slash", fg, keyBg, alt = "\\", altSpoken = "Type backslash", onTap = { sink.char('/'.code) }, onLong = { sink.char('\\'.code) })
-            Key("|", "Vertical bar", fg, keyBg, alt = "&", altSpoken = "Type ampersand", onTap = { sink.char('|'.code) }, onLong = { sink.char('&'.code) })
-            IconKey(fg, keyBg, onSnippets)
+        // 3/8 of the width, so that each arrow is about as wide as a key on the left. The empty cells keep ↑ above ↓.
+        Column(Modifier.weight(3f).semantics { isTraversalGroup = true }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Spacer(Modifier.weight(1f))
+                Key("↑", "Up arrow", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_UP) })
+                Spacer(Modifier.weight(1f))
+            }
+            Row(Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Key("←", "Left arrow", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_LEFT) })
+                Key("↓", "Down arrow", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_DOWN) })
+                Key("→", "Right arrow", fg, keyBg, repeat = true, onTap = { sink.key(KeyEvent.KEYCODE_DPAD_RIGHT) })
+            }
         }
     }
 }
