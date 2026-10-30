@@ -7,7 +7,6 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Typeface;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -25,14 +24,10 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewTreeObserver;
 import android.view.accessibility.AccessibilityManager;
-import android.view.autofill.AutofillManager;
-import android.view.autofill.AutofillValue;
 import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.widget.Scroller;
-
-import androidx.annotation.RequiresApi;
 
 import com.termux.terminal.KeyHandler;
 import com.termux.terminal.TerminalEmulator;
@@ -82,43 +77,6 @@ public final class TerminalView extends View {
 
     /** If non-zero, this is the last unicode code point received if that was a combining character. */
     int mCombiningAccent;
-
-    /**
-     * The current AutoFill type returned for {@link View#getAutofillType()} by {@link #getAutofillType()}.
-     *
-     * The default is {@link #AUTOFILL_TYPE_NONE} so that AutoFill UI, like toolbar above keyboard
-     * is not shown automatically, like on Activity starts/View create. This value should be updated
-     * to required value, like {@link #AUTOFILL_TYPE_TEXT} before calling
-     * {@link AutofillManager#requestAutofill(View)} so that AutoFill UI shows. The updated value
-     * set will automatically be restored to {@link #AUTOFILL_TYPE_NONE} in
-     * {@link #autofill(AutofillValue)} so that AutoFill UI isn't shown anymore by calling
-     * {@link #resetAutoFill()}.
-     */
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    private int mAutoFillType = AUTOFILL_TYPE_NONE;
-
-    /**
-     * The current AutoFill type returned for {@link View#getImportantForAutofill()} by
-     * {@link #getImportantForAutofill()}.
-     *
-     * The default is {@link #IMPORTANT_FOR_AUTOFILL_NO} so that view is not considered important
-     * for AutoFill. This value should be updated to required value, like
-     * {@link #IMPORTANT_FOR_AUTOFILL_YES} before calling {@link AutofillManager#requestAutofill(View)}
-     * so that Android and apps consider the view as important for AutoFill to process the request.
-     * The updated value set will automatically be restored to {@link #IMPORTANT_FOR_AUTOFILL_NO} in
-     * {@link #autofill(AutofillValue)} by calling {@link #resetAutoFill()}.
-     */
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    private int mAutoFillImportance = IMPORTANT_FOR_AUTOFILL_NO;
-
-    /**
-     * The current AutoFill hints returned for {@link View#getAutofillHints()} ()} by {@link #getAutofillHints()} ()}.
-     *
-     * The default is an empty `string[]`. This value should be updated to required value. The
-     * updated value set will automatically be restored an empty `string[]` in
-     * {@link #autofill(AutofillValue)} by calling {@link #resetAutoFill()}.
-     */
-    private String[] mAutoFillHints = new String[0];
 
     private final boolean mAccessibilityEnabled;
 
@@ -252,6 +210,8 @@ public final class TerminalView extends View {
         mAccessibilityEnabled = am.isEnabled();
         // Varco: terminal text can hold secrets; only accessibility tools (for example TalkBack) may read it.
         setAccessibilityDataSensitive(ACCESSIBILITY_DATA_SENSITIVE_YES);
+        // Varco: the terminal is not an autofill field, so the system does not offer autofill for it.
+        setImportantForAutofill(IMPORTANT_FOR_AUTOFILL_NO);
     }
 
 
@@ -640,7 +600,6 @@ public final class TerminalView extends View {
         if (TERMINAL_VIEW_KEY_LOGGING_ENABLED)
             mClient.logInfo(LOG_TAG, "onKeyPreIme(keyCode=" + keyCode + ", event=" + event + ")");
         if (keyCode == KeyEvent.KEYCODE_BACK) {
-            cancelRequestAutoFill();
             if (isSelectingText()) {
                 stopTextSelectionMode();
                 return true;
@@ -1045,128 +1004,6 @@ public final class TerminalView extends View {
     public void setTopRow(int mTopRow) {
         this.mTopRow = mTopRow;
     }
-
-
-
-    /**
-     * Define functions required for AutoFill API
-     */
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    @Override
-    public void autofill(AutofillValue value) {
-        if (value.isText()) {
-            mTermSession.write(value.getTextValue().toString());
-        }
-
-        resetAutoFill();
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    @Override
-    public int getAutofillType() {
-        return mAutoFillType;
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    @Override
-    public String[] getAutofillHints() {
-        return mAutoFillHints;
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    @Override
-    public AutofillValue getAutofillValue() {
-        return AutofillValue.forText("");
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    @Override
-    public int getImportantForAutofill() {
-        return mAutoFillImportance;
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    private synchronized void resetAutoFill() {
-        // Restore none type so that AutoFill UI isn't shown anymore.
-        mAutoFillType = AUTOFILL_TYPE_NONE;
-        mAutoFillImportance = IMPORTANT_FOR_AUTOFILL_NO;
-        mAutoFillHints = new String[0];
-    }
-
-    public AutofillManager getAutoFillManagerService() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null;
-
-        try {
-            Context context = getContext();
-            if (context == null) return null;
-            return context.getSystemService(AutofillManager.class);
-        } catch (Exception e) {
-            mClient.logStackTraceWithMessage(LOG_TAG, "Failed to get AutofillManager service", e);
-            return null;
-        }
-    }
-
-    public boolean isAutoFillEnabled() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false;
-
-        try {
-            AutofillManager autofillManager = getAutoFillManagerService();
-            return autofillManager != null && autofillManager.isEnabled();
-        } catch (Exception e) {
-            mClient.logStackTraceWithMessage(LOG_TAG, "Failed to check if Autofill is enabled", e);
-            return false;
-        }
-    }
-
-    public synchronized void requestAutoFillUsername() {
-        requestAutoFill(
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new String[]{View.AUTOFILL_HINT_USERNAME} :
-                null);
-    }
-
-    public synchronized void requestAutoFillPassword() {
-        requestAutoFill(
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? new String[]{View.AUTOFILL_HINT_PASSWORD} :
-            null);
-    }
-
-    public synchronized void requestAutoFill(String[] autoFillHints) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-        if (autoFillHints == null || autoFillHints.length < 1) return;
-
-        try {
-            AutofillManager autofillManager = getAutoFillManagerService();
-            if (autofillManager != null && autofillManager.isEnabled()) {
-                // Update type that will be returned by `getAutofillType()` so that AutoFill UI is shown.
-                mAutoFillType = AUTOFILL_TYPE_TEXT;
-                // Update importance that will be returned by `getImportantForAutofill()` so that
-                // AutoFill considers the view as important.
-                mAutoFillImportance = IMPORTANT_FOR_AUTOFILL_YES;
-                // Update hints that will be returned by `getAutofillHints()` for which to show AutoFill UI.
-                mAutoFillHints = autoFillHints;
-                autofillManager.requestAutofill(this);
-            }
-        } catch (Exception e) {
-            mClient.logStackTraceWithMessage(LOG_TAG, "Failed to request Autofill", e);
-        }
-    }
-
-    public synchronized void cancelRequestAutoFill() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-        if (mAutoFillType == AUTOFILL_TYPE_NONE) return;
-
-        try {
-            AutofillManager autofillManager = getAutoFillManagerService();
-            if (autofillManager != null && autofillManager.isEnabled()) {
-                resetAutoFill();
-                autofillManager.cancel();
-            }
-        } catch (Exception e) {
-            mClient.logStackTraceWithMessage(LOG_TAG, "Failed to cancel Autofill request", e);
-        }
-    }
-
-
 
 
 

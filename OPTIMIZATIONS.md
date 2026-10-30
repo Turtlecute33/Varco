@@ -23,7 +23,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 | VARCO-OPT-05 | Show the end of the path in the Files top bar | ui-ux | S | low | applied |
 | VARCO-OPT-06 | Answer the YubiKey prompt with an error, not a crash, when the USB key has no smart-card interface | stability | S | low | applied |
 | VARCO-OPT-07 | Drop duplicate names from an SFTP listing before the LazyColumn uses them as keys | stability | S | low | applied |
-| VARCO-OPT-08 | Delete the unused autofill hooks in TerminalView | minimalism | S | low | approved |
+| VARCO-OPT-08 | Delete the unused autofill hooks in TerminalView | minimalism | S | low | applied |
 | VARCO-OPT-09 | Let the missing-key guard do the only back step after a key delete | stability | S | low | approved |
 | VARCO-OPT-10 | Apply the colour scheme only when it changes, so that colours set by the server stay | ui-ux | S | low | approved |
 | VARCO-OPT-11 | Put the arrow keys on the right of the key bar, in the inverted-T layout of a computer keyboard | ui-ux | S to M | low | approved |
@@ -131,7 +131,8 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Verify**: Build and unit tests, then on the emulator: press Back during a text selection, and type into a session. Make sure that the system shows no autofill suggestion over the terminal.
 - **Effort**: S. **Risk**: low. **Net lines**: about -160 (estimate).
 - **Owner decision**: 2026-10-30. The owner approves the setImportantForAutofill(IMPORTANT_FOR_AUTOFILL_NO) flag in place of the getImportantForAutofill override. Do not edit the VARCO-PRIV-001 lines.
-- **Status**: approved
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). javap on the debug TerminalView class shows no autofill member, and the constructor calls setImportantForAutofill after setAccessibilityDataSensitive. git grep finds no other autofill code in app/ or terminal/. No unit test: the change removes dead code and sets one View flag. No release build: the change touches no build file, resource or manifest, so the dex size gain is not measured. Not checked: no run-time check on a device or emulator (Back during a text selection, typing into a session, no autofill suggestion over the terminal).
+- **Status**: applied
 
 ### VARCO-OPT-09: Let the missing-key guard do the only back step after a key delete
 

@@ -32,3 +32,5 @@ Changed for Varco, 2026-10:
   screen when margins are set. `TerminalEmulator.append()` drops a sequence that causes an exception, so that bad
   server output cannot stop the app.
 - The text selection toolbar has no "More…" item. No code made its context menu, so the item only ended the selection.
+- `TerminalView` has no autofill code. No code asked for autofill, and `autofill()` wrote the text to the shell
+  without the paste filter. The view stays not important for autofill.
