@@ -25,7 +25,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 | VARCO-OPT-07 | Drop duplicate names from an SFTP listing before the LazyColumn uses them as keys | stability | S | low | applied |
 | VARCO-OPT-08 | Delete the unused autofill hooks in TerminalView | minimalism | S | low | applied |
 | VARCO-OPT-09 | Let the missing-key guard do the only back step after a key delete | stability | S | low | applied |
-| VARCO-OPT-10 | Apply the colour scheme only when it changes, so that colours set by the server stay | ui-ux | S | low | approved |
+| VARCO-OPT-10 | Apply the colour scheme only when it changes, so that colours set by the server stay | ui-ux | S | low | applied |
 | VARCO-OPT-11 | Put the arrow keys on the right of the key bar, in the inverted-T layout of a computer keyboard | ui-ux | S to M | low | approved |
 
 ### VARCO-OPT-01: Catch a failed store.bin.new create in Store.save, as the encrypt step already does
@@ -157,7 +157,8 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Safety**: Only colour state in memory changes. No storage, preference key, stored scheme, schema or key handling. OSC 52 and the other sequences that 670f85e filters are not involved. No dependency.
 - **Verify**: Emulator check: in a tab, run `printf '\e]11;#330000\a'`, open Files from the session sheet and go back. Today the background goes back to the scheme colour. After the change it stays dark red. Then select another scheme in Settings. All tabs take the new colours.
 - **Effort**: S. **Risk**: low. **Net lines**: about +3 (estimate).
-- **Status**: approved
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). Not checked: no unit test (TermLook has no test suite, and the check needs a TerminalSession with an emulator), and no emulator run of the OSC 11 and scheme-change test in Verify.
+- **Status**: applied
 
 ### VARCO-OPT-11: Put the arrow keys on the right of the key bar, in the inverted-T layout of a computer keyboard
 

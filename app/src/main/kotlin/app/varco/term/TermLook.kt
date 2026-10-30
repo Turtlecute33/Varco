@@ -11,8 +11,13 @@ import com.termux.terminal.TextStyle
 
 /** Colours and font of the terminal engine. */
 object TermLook {
+    /** The last scheme that [apply] set. The same scheme again keeps the colours that the server set (OSC 4, 10, 11, 12). */
+    private var applied: Scheme? = null
+
     /** Sets [scheme] as the default colours of every terminal (the engine has one shared scheme). Main thread. */
     fun apply(scheme: Scheme, sessions: List<TerminalSession>) {
+        if (scheme === applied) return
+        applied = scheme
         val colors = TerminalColors.COLOR_SCHEME.mDefaultColors
         scheme.ansi.copyInto(colors, 0)
         colors[TextStyle.COLOR_INDEX_FOREGROUND] = scheme.foreground
