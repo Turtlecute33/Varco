@@ -19,7 +19,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 | VARCO-OPT-01 | Catch a failed store.bin.new create in Store.save, as the encrypt step already does | stability | S | low | applied |
 | VARCO-OPT-02 | Remove the dead "More…" item from the terminal text-selection toolbar | ui-ux | S | low | applied |
 | VARCO-OPT-03 | Ship only English resources and exclude META-INF/*.version files | minimalism | S | low | applied |
-| VARCO-OPT-04 | Make Back end the terminal text selection, not leave the terminal | ui-ux | S | low | approved |
+| VARCO-OPT-04 | Make Back end the terminal text selection, not leave the terminal | ui-ux | S | low | applied |
 | VARCO-OPT-05 | Show the end of the path in the Files top bar | ui-ux | S | low | approved |
 | VARCO-OPT-06 | Answer the YubiKey prompt with an error, not a crash, when the USB key has no smart-card interface | stability | S | low | approved |
 | VARCO-OPT-07 | Drop duplicate names from an SFTP listing before the LazyColumn uses them as keys | stability | S | low | approved |
@@ -78,7 +78,8 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Safety**: Back handling in the UI only. Copy (SensitiveClip), paste (cc91e7f), the input queue, host keys, app lock, storage and preferences do not change. BackHandler comes from activity-compose, which the app already uses.
 - **Verify**: Not run. Emulator check: long-press to select, then Back with the keyboard hidden. The selection ends and the terminal stays. With the keyboard shown, the first Back closes the keyboard and the second ends the selection. Back with no selection still goes to Home.
 - **Effort**: S. **Risk**: low. **Net lines**: about +5 (estimate).
-- **Status**: approved
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). No unit test: the change only connects a callback to Compose state and a BackHandler. Not checked: no run-time check on an emulator or device of the Back steps in Verify.
+- **Status**: applied
 
 ### VARCO-OPT-05: Show the end of the path in the Files top bar
 

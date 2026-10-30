@@ -47,6 +47,7 @@ class TermClient(
     private val modifiers: Modifiers,
     private val onTap: () -> Unit,
     private val onFontStep: (Int) -> Unit,
+    private val onCopyMode: (Boolean) -> Unit,
 ) : TerminalViewClient {
     override fun onScale(scale: Float): Float {
         if (scale < 0.9f || scale > 1.1f) {
@@ -61,7 +62,7 @@ class TermClient(
     override fun shouldEnforceCharBasedInput() = true
     override fun shouldUseCtrlSpaceWorkaround() = false
     override fun isTerminalViewSelected() = true
-    override fun copyModeChanged(copyMode: Boolean) = Unit
+    override fun copyModeChanged(copyMode: Boolean) = onCopyMode(copyMode)
     override fun onKeyDown(keyCode: Int, e: KeyEvent, session: TerminalSession) = false
     override fun onKeyUp(keyCode: Int, e: KeyEvent) = false
     override fun onLongPress(event: MotionEvent) = false

@@ -2,6 +2,7 @@ package app.varco.ui.terminal
 
 import android.util.TypedValue
 import android.view.inputmethod.InputMethodManager
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -84,6 +85,7 @@ fun TerminalScreen(nav: Navigator) {
     var view by remember { mutableStateOf<TerminalView?>(null) }
     var sessionSheet by remember { mutableStateOf(false) }
     var snippetSheet by remember { mutableStateOf(false) }
+    var selecting by remember { mutableStateOf(false) }
     val shellState by shell.state.collectAsStateWithLifecycle()
     val target by shell.target.collectAsStateWithLifecycle()
 
@@ -130,6 +132,7 @@ fun TerminalScreen(nav: Navigator) {
                                         st.copy(settings = st.settings.copy(fontSize = (st.settings.fontSize + step).coerceIn(MIN_FONT, MAX_FONT)))
                                     }
                                 },
+                                onCopyMode = { selecting = it },
                             ),
                         )
                         isFocusable = true
@@ -189,6 +192,9 @@ fun TerminalScreen(nav: Navigator) {
             if (app.sessions.view === view) app.sessions.view = null
         }
     }
+    // Back ends a text selection and the terminal stays open. With enableOnBackInvokedCallback, Back does not go to
+    // TerminalView.onKeyPreIme.
+    BackHandler(enabled = selecting) { view?.stopTextSelectionMode() }
 
     if (sessionSheet) {
         SessionSheet(
