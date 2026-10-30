@@ -17,7 +17,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 | ID | Finding | Area | Effort | Risk | Status |
 |---|---|---|---|---|---|
 | VARCO-OPT-01 | Catch a failed store.bin.new create in Store.save, as the encrypt step already does | stability | S | low | applied |
-| VARCO-OPT-02 | Remove the dead "More…" item from the terminal text-selection toolbar | ui-ux | S | low | approved |
+| VARCO-OPT-02 | Remove the dead "More…" item from the terminal text-selection toolbar | ui-ux | S | low | applied |
 | VARCO-OPT-03 | Ship only English resources and exclude META-INF/*.version files | minimalism | S | low | approved |
 | VARCO-OPT-04 | Make Back end the terminal text selection, not leave the terminal | ui-ux | S | low | approved |
 | VARCO-OPT-05 | Show the end of the path in the Files top bar | ui-ux | S | low | approved |
@@ -51,7 +51,8 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Safety**: Copy still goes through copySelection to onCopyTextToClipboard and SensitiveClip. The menu Paste still calls onPasteTextFromClipboard. Both lines stay. No security-review lines, storage, preference or key code change. It removes code and adds no dependency.
 - **Verify**: Build and unit tests, then on the emulator: long-press in a session. The toolbar shows Copy and Paste and no overflow button. Copy and Paste still work. A right click with a mouse in vim does not send a click.
 - **Effort**: S. **Risk**: low. **Net lines**: about -40 (estimate).
-- **Status**: approved
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). `./gradlew :app:assembleRelease` passed: mapping.txt has no StoredSelectedText, onContextMenuClosed or ACTION_MORE, and resources.txt and `apkanalyzer resources names` have no text_selection_more. Not checked: no emulator run of the toolbar, Copy, Paste and right-click test in Verify.
+- **Status**: applied
 
 ### VARCO-OPT-03: Ship only English resources and exclude META-INF/*.version files
 

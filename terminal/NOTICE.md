@@ -31,3 +31,4 @@ Changed for Varco, 2026-10:
 - OSC 104 resets only colors 0-255 and ignores a token that is not a number. DECCARA and DECRARA stay on the
   screen when margins are set. `TerminalEmulator.append()` drops a sequence that causes an exception, so that bad
   server output cannot stop the app.
+- The text selection toolbar has no "More…" item. No code made its context menu, so the item only ended the selection.
