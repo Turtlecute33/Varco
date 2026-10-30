@@ -28,7 +28,7 @@ class Sftp(connection: SshConnection) : AutoCloseable {
             ChannelSftp.LsEntrySelector.CONTINUE
         }
         var stats = 0
-        return found.map { e ->
+        return found.distinctBy { it.filename }.map { e ->
             val a = e.attrs
             val full = join(path, e.filename)
             // A link to a folder opens like a folder. Each link costs a round trip, so only the first LINK_STATS

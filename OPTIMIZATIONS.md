@@ -22,7 +22,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 | VARCO-OPT-04 | Make Back end the terminal text selection, not leave the terminal | ui-ux | S | low | applied |
 | VARCO-OPT-05 | Show the end of the path in the Files top bar | ui-ux | S | low | applied |
 | VARCO-OPT-06 | Answer the YubiKey prompt with an error, not a crash, when the USB key has no smart-card interface | stability | S | low | applied |
-| VARCO-OPT-07 | Drop duplicate names from an SFTP listing before the LazyColumn uses them as keys | stability | S | low | approved |
+| VARCO-OPT-07 | Drop duplicate names from an SFTP listing before the LazyColumn uses them as keys | stability | S | low | applied |
 | VARCO-OPT-08 | Delete the unused autofill hooks in TerminalView | minimalism | S | low | approved |
 | VARCO-OPT-09 | Let the missing-key guard do the only back step after a key delete | stability | S | low | approved |
 | VARCO-OPT-10 | Apply the colour scheme only when it changes, so that colours set by the server stay | ui-ux | S | low | approved |
@@ -117,7 +117,8 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Safety**: lit(), the link-stat limit, upload and download do not change. The change only removes a repeated name from the list that the screen shows. No storage, preference or key data. No dependency.
 - **Verify**: OpenSSH on a normal Linux filesystem rarely sends a name two times, so the trigger is a hostile or unusual server. A unit test needs a fake ChannelSftp. If there is no such test, rely on code review and a normal Files listing on the emulator.
 - **Effort**: S. **Risk**: low. **Net lines**: about 0 (estimate).
-- **Status**: approved
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). join() puts the name after a fixed folder path, so different names give different keys. No unit test: Sftp opens a jsch channel in its constructor, and a fake ChannelSftp is not a few lines. No release build: the change touches no build file, resource or manifest. Not checked: no run-time check of a Files listing on a device or emulator, and no test with a server that sends a name two times.
+- **Status**: applied
 
 ### VARCO-OPT-08: Delete the unused autofill hooks in TerminalView
 
