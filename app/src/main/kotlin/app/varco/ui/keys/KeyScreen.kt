@@ -129,7 +129,7 @@ fun KeyScreen(id: String, nav: Navigator) {
                     )
                 }
                 deleting = false
-                nav.back()
+                // No nav.back() here: the key == null guard does the one back step. A second step also closes Keys.
             },
             onDismiss = { deleting = false },
         )
