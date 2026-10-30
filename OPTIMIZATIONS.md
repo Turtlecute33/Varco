@@ -18,7 +18,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 |---|---|---|---|---|---|
 | VARCO-OPT-01 | Catch a failed store.bin.new create in Store.save, as the encrypt step already does | stability | S | low | applied |
 | VARCO-OPT-02 | Remove the dead "More…" item from the terminal text-selection toolbar | ui-ux | S | low | applied |
-| VARCO-OPT-03 | Ship only English resources and exclude META-INF/*.version files | minimalism | S | low | approved |
+| VARCO-OPT-03 | Ship only English resources and exclude META-INF/*.version files | minimalism | S | low | applied |
 | VARCO-OPT-04 | Make Back end the terminal text selection, not leave the terminal | ui-ux | S | low | approved |
 | VARCO-OPT-05 | Show the end of the path in the Files top bar | ui-ux | S | low | approved |
 | VARCO-OPT-06 | Answer the YubiKey prompt with an error, not a crash, when the USB key has no smart-card interface | stability | S | low | approved |
@@ -65,7 +65,8 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Verify**: After the build, `apkanalyzer resources configs --type string` on the new APK lists only default plus en-rAU/CA/GB/IN/XC. `unzip -l` shows no *.version entry, and META-INF/services stays. Install on the emulator and open the main screens.
 - **Effort**: S. **Risk**: low. **Net lines**: about +7 (estimate).
 - **Owner decision**: 2026-10-30. English-only library strings in all apps, MegaGlass included. Apply it. Add a separate excludes line for META-INF/*.version. Do not edit the existing excludes lines from the security review. Make two commits: the locale filter, then the version-files line.
-- **Status**: approved
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). `./gradlew :app:assembleRelease` passed: `apkanalyzer resources configs --type string` lists only default (en-rAU/CA/GB/IN/XC also go, as in Fonte; the default strings are English). resources.arsc is 14,400 B (was 156,148 B). `unzip -l` shows no *.version entry, and META-INF/services stays. The release APK is 3,497,084 B (was 3,649,452 B, local build). Not checked: no emulator run of the main screens, and the README size line is not updated here.
+- **Status**: applied
 
 ### VARCO-OPT-04: Make Back end the terminal text selection, not leave the terminal
 

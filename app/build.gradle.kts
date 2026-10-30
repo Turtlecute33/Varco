@@ -73,6 +73,8 @@ android {
                 "META-INF/**/LICENSE*", "META-INF/**/NOTICE*", "DebugProbesKt.bin", "kotlin/**",
                 "org/bouncycastle/x509/*.properties",
             )
+            // The *.version files only tell each library version to a reader of the APK.
+            excludes += "META-INF/*.version"
         }
     }
 
