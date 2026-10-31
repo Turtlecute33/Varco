@@ -78,7 +78,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Safety**: Back handling in the UI only. Copy (SensitiveClip), paste (cc91e7f), the input queue, host keys, app lock, storage and preferences do not change. BackHandler comes from activity-compose, which the app already uses.
 - **Verify**: Not run. Emulator check: long-press to select, then Back with the keyboard hidden. The selection ends and the terminal stays. With the keyboard shown, the first Back closes the keyboard and the second ends the selection. Back with no selection still goes to Home.
 - **Effort**: S. **Risk**: low. **Net lines**: about +5 (estimate).
-- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). No unit test: the change only connects a callback to Compose state and a BackHandler. Emulator (2026-10-30): pass. All Back steps in Verify work, and the edge back gesture during a selection also ends only the selection.
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). No unit test: the change only connects a callback to Compose state and a BackHandler. Emulator (2026-10-30): pass. All Back steps in Verify work, and the edge back gesture during a selection also ends only the selection. Phone (2026-10-31, release build, real server): pass. Back ends the text selection.
 - **Status**: applied
 
 ### VARCO-OPT-05: Show the end of the path in the Files top bar
@@ -91,7 +91,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Safety**: Text layout only. Path handling, SFTP, glob escaping (5099230) and storage do not change.
 - **Verify**: Emulator check: open a deep folder in Files. The title starts with '…' and ends with the folder name. Other screens with long titles still cut at the end.
 - **Effort**: S. **Risk**: low. **Net lines**: about +1 (estimate).
-- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). No unit test: the change is text layout only. No release build: the change touches no build file, resource or manifest. Emulator (2026-10-30): pass. A deep folder shows as '…/varco/ui/terminal'. A long key name is cut at the end. Side effect: when Files has no path yet, the server name in the title is now also cut at the start.
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). No unit test: the change is text layout only. No release build: the change touches no build file, resource or manifest. Emulator (2026-10-30): pass. A deep folder shows as '…/varco/ui/terminal'. A long key name is cut at the end. Side effect: when Files has no path yet, the server name in the title is now also cut at the start. Phone (2026-10-31, release build, real server): pass. Files shows the end of the path.
 - **Status**: applied
 
 ### VARCO-OPT-06: Answer the YubiKey prompt with an error, not a crash, when the USB key has no smart-card interface
@@ -170,7 +170,7 @@ Areas in good shape: battery, cold start, terminal hot path, main thread, lifecy
 - **Verify**: Build and unit tests. Then the owner checks on a phone, in portrait and landscape: ↑ is directly above ↓, arrows repeat while held, a long press on -, / and | types _, \ and &, CTRL and ALT lock, and TalkBack speaks each key name.
 - **Effort**: S to M. **Risk**: low. **Net lines**: about +10 (estimate).
 - **Owner decision**: 2026-10-30. Put the arrow keys on the right side of the key bar, in the layout of a computer keyboard: two rows, ↑ on the top row above ↓, and ←, ↓ and → on the bottom row. The other keys stay on the left in their current order. Keep the touch targets. The layout is not stored, so no stored format or preference key changes.
-- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). Not checked: no unit test (the change is Compose layout only). Emulator (2026-10-30): pass. ↑ is directly above ↓ in portrait and landscape. The arrows send the correct keys and repeat while held. A long press on -, / and | types _, \ and &. CTRL and ALT apply once on tap and lock on long press. Not checked: TalkBack speech and swipe order (adb cannot drive TalkBack).
+- **Verified**: `./gradlew :app:testDebugUnitTest :terminal:testDebugUnitTest :app:assembleDebug` passed (51 tests, 0 failures; :terminal has no unit tests). Not checked: no unit test (the change is Compose layout only). Emulator (2026-10-30): pass. ↑ is directly above ↓ in portrait and landscape. The arrows send the correct keys and repeat while held. A long press on -, / and | types _, \ and &. CTRL and ALT apply once on tap and lock on long press. Not checked: TalkBack speech and swipe order (adb cannot drive TalkBack). Phone (2026-10-31, release build, real server): pass. The inverted-T layout, the key size, the haptic tick and the key repeat are good in portrait and landscape. TalkBack is still not checked (optional).
 - **Status**: applied
 
 ## Areas in good shape
@@ -198,7 +198,7 @@ Full check on 2026-10-30 at commit 86f55ca (branch optimize). Each command ran a
   - `./gradlew :app:assembleDebug`: pass.
   - `./gradlew :app:assembleRelease`: pass. apksigner verifies the signature (v2 scheme). The APK has no META-INF/*.version entry, and resources.arsc is 14,400 B.
 - **Not applied**: none. Each item has one commit, and VARCO-OPT-03 has two (as the owner asked).
-- **Owner checks by hand**: the build checks above used no device. The emulator checks are in "Device checks (2026-10-30)" below. The checks that stay for the owner are in its list "Still for the owner". No item needs a check on Windows.
+- **Owner checks by hand**: the build checks above used no device. The emulator checks are in "Device checks (2026-10-30)" below. The phone checks are in "Phone session (2026-10-31)". The checks that stay for the owner are in the list "Still for the owner". No item needs a check on Windows.
 
 ### Device checks (2026-10-30)
 
@@ -237,10 +237,21 @@ Method: a debug build (0.2.1, versionCode 5) of branch optimize at cb4159c, on a
 
 Crashes and ANRs: the crash log was empty. The one ANR of the debug app came from another app on the shared emulator, which took the window focus, and not from a Varco hang.
 
-Still for the owner (on a phone with a debug build):
+Still for the owner (on a phone):
 
-- VARCO-OPT-02: a right click with a mouse in vim does not send a click.
-- VARCO-OPT-03: with the phone set to a non-English language and TalkBack on, the spoken Compose words (Close sheet, On, Off) are English.
 - VARCO-OPT-05: decide if the server name in the Files title (no path yet, or no connection) can also cut at the start.
-- VARCO-OPT-06: plug in a FIDO-only key during a PIV prompt. The tab shows 'Unsupported connection type' and the app stays open. A normal YubiKey sign-in over NFC and USB still works.
-- VARCO-OPT-11: TalkBack speaks each key name and reads the left keys first, then the four arrows. Also check the haptic tick, the key repeat rate and feel, and the key widths on the real screen in portrait and landscape.
+- VARCO-OPT-02 (optional): a right click with a mouse in vim does not send a click.
+- VARCO-OPT-03 (optional): with the phone set to a non-English language and TalkBack on, the spoken Compose words (Close sheet, On, Off) are English.
+- VARCO-OPT-06 (optional): plug in a FIDO-only key during a PIV prompt. The tab shows 'Unsupported connection type' and the app stays open. A normal YubiKey sign-in over NFC and USB still works.
+- VARCO-OPT-11 (optional): TalkBack speaks each key name and reads the left keys first, then the four arrows.
+
+### Phone session (2026-10-31)
+
+Phone session on 2026-10-31 with the owner, on the owner's Pixel 9 Pro XL (GrapheneOS, Android 17). Claude built the release APK of branch optimize. Claude checked that its signing certificate is the same as the certificate of the installed release. Claude installed it over the installed release with `adb install -r`, so the app data stayed. The owner did the steps on the phone and reported them as good. Claude read logcat after each app step: no crash and no ANR for the app.
+
+- **Build**: release 0.2.1 (versionCode 5). Certificate c1c9b7b7...a9d9, the same as the installed release. Installed over it; the keys and servers stayed.
+- **Owner checks, with a real server**:
+  - VARCO-OPT-11: the new arrow layout (inverted T on the right), the key size, the haptic tick and the key repeat, in portrait and landscape: good.
+  - VARCO-OPT-04: Back ends the text selection: good.
+  - VARCO-OPT-05: Files shows the end of the path: good.
+- **Not done (optional)**: the YubiKey (VARCO-OPT-06), the mouse (VARCO-OPT-02) and the TalkBack parts of VARCO-OPT-03 and VARCO-OPT-11. They stay in "Still for the owner".
