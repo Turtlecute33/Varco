@@ -242,7 +242,9 @@ fun FilesScreen(serverId: String, nav: Navigator) {
     Scaffold(
         topBar = {
             // Cut a long path at the start, so that the name of the open folder stays visible.
-            Bar(model.path ?: server?.name ?: "Files", onBack = nav::back, overflow = TextOverflow.StartEllipsis) {
+            // A server name (no path yet) keeps the cut at the end, because its start is the useful part.
+            val overflow = if (model.path != null) TextOverflow.StartEllipsis else TextOverflow.Ellipsis
+            Bar(model.path ?: server?.name ?: "Files", onBack = nav::back, overflow = overflow) {
                 IconButton(onClick = { upload.launch(arrayOf("*/*")) }, enabled = model.path != null) { Icon(Icons.Upload, contentDescription = "Upload") }
                 IconButton(onClick = { newFolder = true }, enabled = model.path != null) { Icon(Icons.NewFolder, contentDescription = "New folder") }
                 Box {
