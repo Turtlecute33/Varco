@@ -1,0 +1,23 @@
+# Zapstore listing. The Zapstore indexer reads this file and publishes each new GitHub release.
+repository: https://github.com/Turtlecute33/Varco
+summary: Modern SSH with post-quantum key exchange and keys in the phone's secure chip.
+description: |
+  Varco is an SSH client. It uses the Termux terminal engine, so vim, htop, tmux and other
+  full-screen programs work correctly. New keys are made in the phone's secure chip, and the
+  private key can never go out of the chip. No trackers, no Google Play Services.
+
+  Varco has a small number of features, and thus a small attack surface. It does not have port
+  forwarding, jump hosts, Mosh, agent forwarding or FIDO2 security keys.
+
+  - **Terminal**: true colour, mouse, an extra-keys bar and pinch to zoom.
+  - **Sessions**: more than one at the same time. A reconnect keeps the screen and the scrollback.
+  - **Keys**: Ed25519 or ECDSA P-256 in the secure chip, YubiKey PIV over NFC and USB-C, and
+    imported OpenSSH keys.
+  - **Import from Termux**: keys, `~/.ssh/config`, `known_hosts`, colours and font.
+  - **SFTP file browser**, **snippets** and **13 colour schemes**.
+license: GPL-3.0-only
+tags: [ssh, terminal, security]
+icon: ./docs/icon.png
+images:
+  - ./docs/banner.png
+metadata_sources: []
