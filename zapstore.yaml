@@ -19,5 +19,8 @@ license: GPL-3.0-only
 tags: [ssh, terminal, security]
 icon: ./docs/icon.png
 images:
+  - ./docs/screenshots/servers.png
+  - ./docs/screenshots/terminal.png
+  - ./docs/screenshots/key.png
   - ./docs/banner.png
 metadata_sources: []
