@@ -239,7 +239,7 @@ Crashes and ANRs: the crash log was empty. The one ANR of the debug app came fro
 
 Still for the owner (on a phone):
 
-- VARCO-OPT-05: decide if the server name in the Files title (no path yet, or no connection) can also cut at the start.
+- VARCO-OPT-05: decided by the owner (2026-10-31): the server name in the Files title keeps the cut at the end. Server names are short, and their start is the useful part.
 - VARCO-OPT-02 (optional): a right click with a mouse in vim does not send a click.
 - VARCO-OPT-03 (optional): with the phone set to a non-English language and TalkBack on, the spoken Compose words (Close sheet, On, Off) are English.
 - VARCO-OPT-06 (optional): plug in a FIDO-only key during a PIV prompt. The tab shows 'Unsupported connection type' and the app stays open. A normal YubiKey sign-in over NFC and USB still works.
