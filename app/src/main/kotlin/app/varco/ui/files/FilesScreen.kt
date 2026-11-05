@@ -6,15 +6,18 @@ import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.text.format.DateUtils
 import android.text.format.Formatter
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -32,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +56,7 @@ import app.varco.ui.components.EmptyState
 import app.varco.ui.components.Icons
 import app.varco.ui.components.ListRow
 import app.varco.ui.nav.Navigator
+import app.varco.ui.prompts.clean
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -64,7 +69,7 @@ import kotlinx.coroutines.withContext
 class FilesModel(private val context: Application, private val serverId: String) : ViewModel() {
     private val sftpThread = Dispatchers.IO.limitedParallelism(1)
     private var own: SshConnection? = null
-    private var sftp: Sftp? = null
+    @Volatile private var sftp: Sftp? = null
     private var start: String? = null
 
     var path by mutableStateOf<String?>(null)
@@ -74,6 +79,10 @@ class FilesModel(private val context: Application, private val serverId: String)
     var loading by mutableStateOf(true)
         private set
     var error by mutableStateOf<String?>(null)
+        private set
+
+    /** The last listing failed; Back then leaves the screen, so that it cannot get stuck. */
+    var listFailed by mutableStateOf(false)
         private set
 
     /** Bytes done and total of the running transfer, or null. */
@@ -113,7 +122,10 @@ class FilesModel(private val context: Application, private val serverId: String)
 
     fun rename(entry: Sftp.Entry, name: String) = work {
         val dir = requireNotNull(path)
-        sftp().rename(entry.path, Sftp.join(dir, name))
+        val target = Sftp.join(dir, name)
+        // posix-rename replaces the target without a warning: refuse a name that is in use.
+        check(!sftp().exists(target)) { "A file with this name is in this folder" }
+        sftp().rename(entry.path, target)
         list(dir)
     }
 
@@ -123,7 +135,9 @@ class FilesModel(private val context: Application, private val serverId: String)
     }
 
     fun download(entry: Sftp.Entry, target: Uri) = work {
-        transfer = 0L to entry.size
+        // The list shows the size of a link, not of its target: no known total, so the bar is indeterminate.
+        val total = if (entry.isLink) 0L else entry.size
+        transfer = 0L to total
         try {
             val resolver = context.contentResolver
             // "w" may keep old bytes past the new end; some providers reject "wt".
@@ -131,11 +145,12 @@ class FilesModel(private val context: Application, private val serverId: String)
             val out = truncating ?: resolver.openOutputStream(target) ?: return@work
             var wrote = 0L
             val done = runCatching {
-                out.use { sftp().download(entry.path, it) { d -> wrote = d; transfer = d to entry.size } }
+                out.use { sftp().download(entry.path, it) { d -> wrote = d; transfer = d to total } }
             }
             // A cut-off file must not look complete. A "w" file with no new bytes still has its old content: keep it.
             if (done.isFailure && (truncating != null || wrote > 0)) runCatching { DocumentsContract.deleteDocument(resolver, target) }
             done.getOrThrow()
+            withContext(Dispatchers.Main) { Toast.makeText(context, "Saved", Toast.LENGTH_SHORT).show() }
         } finally {
             transfer = null
         }
@@ -166,6 +181,11 @@ class FilesModel(private val context: Application, private val serverId: String)
         list(dir)
     }
 
+    /** Stops the running transfer. Called on the main thread; the transfer runs on [sftpThread]. */
+    fun cancel() {
+        sftp?.cancel = true
+    }
+
     /** The answer to [conflict]: replace the file on the server, or keep it. */
     fun answerConflict(replace: Boolean) {
         val (source, _) = conflict ?: return
@@ -182,7 +202,7 @@ class FilesModel(private val context: Application, private val serverId: String)
         val app = context.app
         val shared = app.sessions.shells.value.firstNotNullOfOrNull { s -> s.openConnection.takeIf { s.server.id == serverId } }
         val connection = shared ?: own ?: run {
-            val server = app.store.state.value.servers.first { it.id == serverId }
+            val server = app.store.state.value.servers.firstOrNull { it.id == serverId } ?: kotlin.error("This server was deleted")
             SshConnection(SshEnv(app.store, app.chip, app.prompts), server).also {
                 own = it
                 it.connect(onBanner = {})
@@ -195,7 +215,7 @@ class FilesModel(private val context: Application, private val serverId: String)
     }
 
     private fun list(dir: String) {
-        val list = sftp().list(dir)
+        val list = runCatching { sftp().list(dir) }.onFailure { listFailed = true }.getOrThrow()
         entries = list
         path = dir
     }
@@ -204,7 +224,9 @@ class FilesModel(private val context: Application, private val serverId: String)
         viewModelScope.launch {
             loading = true
             error = null
-            runCatching { withContext(sftpThread) { block() } }.onFailure { error = it.message ?: it.javaClass.simpleName }
+            listFailed = false
+            // Server text: no control or bidi characters.
+            runCatching { withContext(sftpThread) { block() } }.onFailure { error = clean(it.message ?: it.javaClass.simpleName) }
             loading = false
         }
     }
@@ -229,6 +251,9 @@ fun FilesScreen(serverId: String, nav: Navigator) {
     var renaming by remember { mutableStateOf<Sftp.Entry?>(null) }
     var deleting by remember { mutableStateOf<Sftp.Entry?>(null) }
     var downloading by remember { mutableStateOf<Sftp.Entry?>(null) }
+    var leaving by remember { mutableStateOf(false) }
+    // Leaving the screen stops a running transfer: ask first.
+    val leave: () -> Unit = { if (model.transfer != null) leaving = true else nav.back() }
     val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("*/*")) { uri ->
         val entry = downloading
         if (uri != null && entry != null) model.download(entry, uri)
@@ -236,15 +261,17 @@ fun FilesScreen(serverId: String, nav: Navigator) {
     }
     val upload = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(model::upload) }
 
-    // Back goes up one folder; after an error it leaves the screen, so that it can never get stuck.
-    BackHandler(enabled = model.path != null && !model.atStart && model.path != "/" && model.error == null) { model.up() }
+    // Back goes up one folder; after a failed listing it leaves the screen, so that it can never get stuck.
+    BackHandler(enabled = model.path != null && !model.atStart && model.path != "/" && !model.listFailed) { model.up() }
+    // Declared last, so that it comes first while a transfer runs.
+    BackHandler(enabled = model.transfer != null) { leaving = true }
 
     Scaffold(
         topBar = {
             // Cut a long path at the start, so that the name of the open folder stays visible.
             // A server name (no path yet) keeps the cut at the end, because its start is the useful part.
             val overflow = if (model.path != null) TextOverflow.StartEllipsis else TextOverflow.Ellipsis
-            Bar(model.path ?: server?.name ?: "Files", onBack = nav::back, overflow = overflow) {
+            Bar(clean(model.path ?: server?.name ?: "Files"), onBack = leave, overflow = overflow) {
                 IconButton(onClick = { upload.launch(arrayOf("*/*")) }, enabled = model.path != null) { Icon(Icons.Upload, contentDescription = "Upload") }
                 IconButton(onClick = { newFolder = true }, enabled = model.path != null) { Icon(Icons.NewFolder, contentDescription = "New folder") }
                 Box {
@@ -267,8 +294,12 @@ fun FilesScreen(serverId: String, nav: Navigator) {
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             model.transfer?.let { (done, total) ->
-                if (total > 0) LinearProgressIndicator(progress = { (done.toFloat() / total).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
-                else LinearProgressIndicator(Modifier.fillMaxWidth())
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 20.dp)) {
+                    val bar = Modifier.weight(1f)
+                    if (total > 0) LinearProgressIndicator(progress = { (done.toFloat() / total).coerceIn(0f, 1f) }, modifier = bar)
+                    else LinearProgressIndicator(bar)
+                    TextButton(onClick = model::cancel) { Text("Stop") }
+                }
             }
             model.error?.let {
                 Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
@@ -277,14 +308,16 @@ fun FilesScreen(serverId: String, nav: Navigator) {
                 if (model.path != null && model.entries.isEmpty() && !model.loading) {
                     EmptyState(Icons.Folder, "Empty folder", Modifier.fillMaxSize())
                 }
-                LazyColumn(Modifier.fillMaxSize()) {
+                // A new state for each folder, so that a folder opens at the top.
+                val listState = rememberSaveable(model.path, saver = LazyListState.Saver) { LazyListState() }
+                LazyColumn(Modifier.fillMaxSize(), state = listState) {
                     if (model.path != null && !model.atStart && model.path != "/") {
                         item { ListRow(title = "..", icon = Icons.Folder, onClick = { model.up() }) }
                     }
                     items(model.entries, key = { it.path }) { entry ->
                         var menu by remember { mutableStateOf(false) }
                         ListRow(
-                            title = entry.name + if (entry.isLink) " →" else "",
+                            title = clean(entry.name) + if (entry.isLink) " →" else "",
                             subtitle = buildString {
                                 if (!entry.isDir) append(Formatter.formatShortFileSize(context, entry.size)).append(" · ")
                                 append(DateUtils.getRelativeTimeSpanString(entry.modified))
@@ -306,7 +339,7 @@ fun FilesScreen(serverId: String, nav: Navigator) {
                                         DropdownMenuItem(
                                             text = { Text("Download") },
                                             leadingIcon = { Icon(Icons.Download, null) },
-                                            onClick = { menu = false; downloading = entry; save.launch(entry.name) },
+                                            onClick = { menu = false; downloading = entry; save.launch(clean(entry.name)) },
                                         )
                                     }
                                     DropdownMenuItem(
@@ -338,6 +371,16 @@ fun FilesScreen(serverId: String, nav: Navigator) {
     renaming?.let { entry ->
         NameDialog("Rename", entry.name, onDone = { name -> renaming = null; if (name != null && name != entry.name) model.rename(entry, name) })
     }
+    if (leaving) {
+        ConfirmDialog(
+            title = "Stop the transfer?",
+            text = "The transfer stops. An incomplete download is deleted.",
+            confirm = "Stop",
+            destructive = true,
+            onConfirm = { leaving = false; nav.back() },
+            onDismiss = { leaving = false },
+        )
+    }
     model.conflict?.let { (_, name) ->
         ConfirmDialog(
             title = "Replace $name?",
@@ -350,7 +393,7 @@ fun FilesScreen(serverId: String, nav: Navigator) {
     }
     deleting?.let { entry ->
         ConfirmDialog(
-            title = "Delete ${entry.name}?",
+            title = "Delete ${clean(entry.name)}?",
             text = if (entry.isDir) "Only an empty folder can be deleted." else "The file is deleted on the server.",
             confirm = "Delete",
             destructive = true,
@@ -369,12 +412,13 @@ private fun NameDialog(
     isPath: Boolean = false,
 ) {
     var name by remember { mutableStateOf(initial) }
-    val valid = name.isNotBlank() && (isPath || ('/' !in name && name != "." && name != ".."))
+    val trimmed = name.trim()
+    val valid = trimmed.isNotEmpty() && (isPath || ('/' !in trimmed && trimmed != "." && trimmed != ".."))
     AlertDialog(
         onDismissRequest = { onDone(null) },
         title = { Text(title) },
         text = { OutlinedTextField(value = name, onValueChange = { name = it }, singleLine = true, label = { Text(label) }) },
-        confirmButton = { TextButton(onClick = { onDone(name.trim()) }, enabled = valid) { Text("OK") } },
+        confirmButton = { TextButton(onClick = { onDone(trimmed) }, enabled = valid) { Text("OK") } },
         dismissButton = { TextButton(onClick = { onDone(null) }) { Text("Cancel") } },
     )
 }

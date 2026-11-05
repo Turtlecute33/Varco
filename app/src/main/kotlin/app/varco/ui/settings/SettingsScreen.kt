@@ -1,6 +1,9 @@
 package app.varco.ui.settings
 
 import android.content.Context
+import android.hardware.biometrics.BiometricManager
+import android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import android.hardware.biometrics.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -84,6 +87,7 @@ fun SettingsScreen(nav: Navigator) {
     fun set(change: (Settings) -> Settings) = app.store.update { it.copy(settings = change(it.settings)) }
     var removing by remember { mutableStateOf<Scheme?>(null) }
     var licences by remember { mutableStateOf(false) }
+    var noScreenLock by remember { mutableStateOf(false) }
     val current = Schemes.byId(s.schemeId, state.schemes)
 
     Scaffold(topBar = { Bar("Settings", onBack = nav::back) }) { padding ->
@@ -117,12 +121,8 @@ fun SettingsScreen(nav: Navigator) {
                 value = withContext(Dispatchers.IO) { Importer.fontFile(context).exists() }
             }
             if (hasFont) {
-                ListRow(title = "JetBrains Mono", onClick = { set { it.copy(font = "jetbrains-mono") } }) {
-                    RadioButton(selected = s.font != Importer.FONT_CUSTOM, onClick = { set { it.copy(font = "jetbrains-mono") } })
-                }
-                ListRow(title = "Imported font", onClick = { set { it.copy(font = Importer.FONT_CUSTOM) } }) {
-                    RadioButton(selected = s.font == Importer.FONT_CUSTOM, onClick = { set { it.copy(font = Importer.FONT_CUSTOM) } })
-                }
+                FontRow("JetBrains Mono", s.font != Importer.FONT_CUSTOM) { set { it.copy(font = "jetbrains-mono") } }
+                FontRow("Imported font", s.font == Importer.FONT_CUSTOM) { set { it.copy(font = Importer.FONT_CUSTOM) } }
             }
 
             SectionHeader("Terminal")
@@ -142,7 +142,16 @@ fun SettingsScreen(nav: Navigator) {
             )
 
             SectionHeader("Security")
-            SwitchRow("App lock", s.appLock, { v -> set { it.copy(appLock = v) } }, "Fingerprint or screen lock to open Varco. Sessions stay connected.")
+            // Without a screen lock, the lock screen cannot open Varco again: keep the switch off and tell why.
+            SwitchRow(
+                "App lock",
+                s.appLock,
+                { v ->
+                    noScreenLock = v && !canLock(context)
+                    if (!noScreenLock) set { it.copy(appLock = v) }
+                },
+                if (noScreenLock) "Set a screen lock on the phone first." else "Fingerprint or screen lock to open Varco. Sessions stay connected.",
+            )
             if (s.appLock) {
                 Row(Modifier.padding(horizontal = 12.dp)) {
                     listOf(0 to "At once", 60 to "1 min", 300 to "5 min", 900 to "15 min").forEach { (seconds, label) ->
@@ -214,6 +223,19 @@ private fun readLicences(context: Context): String =
         .lines().joinToString("\n") { it.trim() }
         .replace(Regex("(?<=\\S)\n(?=\\S)"), " ")
         .replace(Regex("\n{3,}"), "\n\n")
+
+/** True when the phone can show the lock prompt, with the same authenticators as the app lock. */
+private fun canLock(context: Context): Boolean =
+    context.getSystemService(BiometricManager::class.java)
+        .canAuthenticate(BIOMETRIC_STRONG or DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS
+
+/** A font option. The row is the one radio button for TalkBack. */
+@Composable
+private fun FontRow(label: String, selected: Boolean, onClick: () -> Unit) {
+    ListRow(title = label, modifier = Modifier.selectable(selected = selected, onClick = onClick, role = Role.RadioButton)) {
+        RadioButton(selected = selected, onClick = null)
+    }
+}
 
 /** A radio option; the whole row (button and label) is the touch target. */
 @Composable

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -33,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -108,9 +110,10 @@ fun KeysScreen(nav: Navigator) {
         } else {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
                 items(keys, key = { it.id }) { key ->
+                    val fingerprint = remember(key.publicKey) { SshWire.fingerprint(key.publicBlob).take(20) }
                     ListRow(
                         title = key.name,
-                        subtitle = "${where(key)} · ${SshWire.fingerprint(key.publicBlob).take(20)}…",
+                        subtitle = "${where(key)} · $fingerprint…",
                         icon = icon(key),
                         onClick = { nav.go(Route.Key(key.id)) },
                     )
@@ -186,8 +189,12 @@ private fun CreateKeyDialog(onDone: (String?) -> Unit) {
 
 @Composable
 private fun Choice(label: String, selected: Boolean, onClick: () -> Unit) {
-    ListRow(title = label, onClick = onClick, horizontalPadding = 0.dp) {
-        RadioButton(selected = selected, onClick = onClick)
+    ListRow(
+        title = label,
+        modifier = Modifier.selectable(selected = selected, onClick = onClick, role = Role.RadioButton),
+        horizontalPadding = 0.dp,
+    ) {
+        RadioButton(selected = selected, onClick = null)
     }
 }
 

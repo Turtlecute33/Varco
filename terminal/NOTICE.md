@@ -23,8 +23,11 @@ Changed for Varco, 2026-10:
 - `TerminalView` is marked accessibility-data-sensitive, so that only accessibility tools can read the screen text.
 - `TerminalEmulator.mCellWidthPixels` / `mCellHeightPixels` are package-visible.
 - XTGETTCAP: a request name that is not hex gets no reply, so server bytes never come back as typed input.
-- `TerminalView.commitText()` sends a keyboard paste (more than one character, with a line break or ESC)
+- `TerminalView.commitText()` sends a keyboard paste (more than one character, with a control character)
   through `TerminalEmulator.paste()`, as the menu paste: ESC and C1 are removed, and bracketed paste is used when the shell asks for it.
+- `TerminalEmulator.paste()` writes the bracketed-paste markers and the text in one write, so that the input queue
+  takes or drops them together.
+- CAN and SUB cancel an APC string (`ESC _`), as in xterm.
 - Fixes from termux-app master: `30ebb2dee3` (the termcap names `kN` and `kP` give Page Down and Page Up),
   `47c473f9be` (an erase to the end of a line clears its line wrap), `5532cc4f88` (`TerminalRow.mSpaceUsed` is an `int`).
 - `TerminalBuffer.resize()` with a column change makes only the screen rows, not a row for each transcript line.

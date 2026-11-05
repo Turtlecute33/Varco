@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** App-wide objects. Sessions live here, so that they outlive the activity. */
 class VarcoApp : Application() {
@@ -46,8 +47,9 @@ class VarcoApp : Application() {
         store = Store(filesDir, Vault(), scope)
         sessions = Sessions(this, store, SshEnv(store, chip, prompts), scope)
         appLock = AppLock({ store.state.value.settings.appLock }, { store.state.value.settings.lockAfter })
-        scope.launch(Dispatchers.IO) {
-            store.load()
+        // Only the read is on IO: all AppLock changes stay on the main thread, with onForeground.
+        scope.launch {
+            withContext(Dispatchers.IO) { store.load() }
             appLock.onLoaded()
             _ready.value = true
         }

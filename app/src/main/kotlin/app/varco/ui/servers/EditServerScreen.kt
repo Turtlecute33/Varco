@@ -39,6 +39,7 @@ import app.varco.data.SshKey
 import app.varco.ui.components.Bar
 import app.varco.ui.components.SwitchRow
 import app.varco.ui.nav.Navigator
+import app.varco.ui.nav.Route
 import java.util.UUID
 
 /** Add or change a server. [id] null = new. */
@@ -58,9 +59,13 @@ fun EditServerScreen(id: String?, nav: Navigator) {
     var password by remember { mutableStateOf(old?.password.orEmpty()) }
 
     val portNumber = port.toIntOrNull()?.takeIf { it in 1..65535 }
-    val valid = host.isNotBlank() && user.isNotBlank() && portNumber != null && host.none { it.isWhitespace() }
+    // save() stores the trimmed host, so only a space inside it is an error.
+    val hostError = host.trim().any { it.isWhitespace() }
+    val valid = host.isNotBlank() && user.isNotBlank() && portNumber != null && !hostError
 
     fun save() {
+        // A second tap during the exit animation must not add the server again or go back twice.
+        if (nav.current != Route.EditServer(id)) return
         val server = Server(
             id = old?.id ?: UUID.randomUUID().toString(),
             name = name.trim().ifEmpty { host.trim() },
@@ -93,10 +98,10 @@ fun EditServerScreen(id: String?, nav: Navigator) {
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Field("Host", host, { host = it }, KeyboardType.Uri, Modifier.fillMaxWidth(), placeholder = "example.com or 192.168.1.10")
+            Field("Host", host, { host = it }, KeyboardType.Uri, Modifier.fillMaxWidth(), placeholder = "example.com or 192.168.1.10", error = if (hostError) "No spaces" else null)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Field("User", user, { user = it }, KeyboardType.Ascii, Modifier.weight(2f), placeholder = "root")
-                Field("Port", port, { port = it.filter(Char::isDigit).take(5) }, KeyboardType.Number, Modifier.weight(1f))
+                Field("Port", port, { port = it.filter(Char::isDigit).take(5) }, KeyboardType.Number, Modifier.weight(1f), error = if (port.isNotEmpty() && portNumber == null) "1–65535" else null)
             }
             Field("Name", name, { name = it }, KeyboardType.Text, Modifier.fillMaxWidth(), placeholder = host.ifBlank { "Shown in the list" }, capitalize = true)
             KeyPicker(state.keys, keyId) { keyId = it }
@@ -137,12 +142,15 @@ private fun Field(
     modifier: Modifier = Modifier,
     placeholder: String? = null,
     capitalize: Boolean = false,
+    error: String? = null,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
         label = { Text(label) },
         placeholder = placeholder?.let { { Text(it) } },
+        isError = error != null,
+        supportingText = error?.let { { Text(it) } },
         singleLine = true,
         keyboardOptions = KeyboardOptions(
             keyboardType = type,

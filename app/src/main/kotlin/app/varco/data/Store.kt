@@ -31,6 +31,10 @@ class Store(dir: File, private val vault: Vault, private val scope: CoroutineSco
 
     /** False when an unreadable file could not be moved aside: no write may then replace it. */
     @Volatile private var writable = true
+
+    /** True when the file exists but [load] could not read it. Home shows a notice. */
+    @Volatile var loadFailed = false
+        private set
     private val _state = MutableStateFlow(AppState())
     val state: StateFlow<AppState> = _state.asStateFlow()
 
@@ -46,6 +50,7 @@ class Store(dir: File, private val vault: Vault, private val scope: CoroutineSco
         _state.value = runCatching { decode(JSONObject(vault.decryptString(file.readFully()))) }.getOrElse { e ->
             // No file yet: the first start. A file that exists but cannot be opened is kept like a damaged one.
             if (e is FileNotFoundException && !file.baseFile.exists()) return
+            loadFailed = true
             val target = generateSequence(0) { it + 1 }
                 .map { File(dir, if (it == 0) UNREADABLE else "$UNREADABLE.$it") }
                 .first { !it.exists() }

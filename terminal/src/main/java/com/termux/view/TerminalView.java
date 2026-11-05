@@ -326,12 +326,12 @@ public final class TerminalView extends View {
                 return true;
             }
 
-            /** Several characters with a line break or ESC: a paste (keyboard clipboard), not typing. */
+            /** Several characters with a control character (C0, DEL or C1): a paste (keyboard clipboard), not typing. */
             boolean isPaste(CharSequence text) {
                 if (text.length() < 2) return false;
                 for (int i = 0; i < text.length(); i++) {
                     char c = text.charAt(i);
-                    if (c == '\n' || c == '\r' || c == 27) return true;
+                    if (c < 0x20 || (c >= 0x7F && c <= 0x9F)) return true;
                 }
                 return false;
             }

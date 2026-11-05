@@ -50,6 +50,10 @@ class SshConnection(private val env: SshEnv, val server: Server) {
     @Volatile
     private var session: Session? = null
 
+    /** Set by [close]. jsch ignores disconnect() before the TCP connect ends, so [connect] checks this flag. */
+    @Volatile
+    private var closed = false
+
     val jsch: Session get() = checkNotNull(session) { "Not connected" }
 
     val isConnected: Boolean get() = session?.isConnected == true
@@ -77,6 +81,10 @@ class SshConnection(private val env: SshEnv, val server: Server) {
         }
         session = s
         s.connect(CONNECT_TIMEOUT_MS)
+        if (closed) {
+            s.disconnect()
+            throw Cancelled()
+        }
         // A saved password that failed is replaced, or removed when "Save password" is off: it must not fail again.
         if (auth.newPassword != null || auth.savedFailed) {
             val password = auth.newPassword
@@ -86,6 +94,7 @@ class SshConnection(private val env: SshEnv, val server: Server) {
 
     /** Ends the connection, and with it any open prompt of this connection. */
     fun close() {
+        closed = true
         askJob.cancel()
         session?.disconnect()
     }
@@ -136,8 +145,16 @@ class SshConnection(private val env: SshEnv, val server: Server) {
                 val pin = ask(Ask.Pin(server.name, key.name, triesLeft)) ?: throw Cancelled()
                 try {
                     // The dialog stays open until the YubiKey has signed, so the user holds the key long enough.
+                    // Each tap gets its own PIN copy: close() can wipe [pin] while the YubiKit thread still signs.
+                    // A NUL in the copy means a wipe came first; a wrong PIN would use up a YubiKey PIN retry.
                     val result = ask(Ask.Touch(server.name, key.name) { connection ->
-                        Piv.sign(connection, slot, key.publicBlob, pin, data, alg)
+                        val copy = pin.copyOf()
+                        try {
+                            if ('\u0000' in copy) throw Cancelled()
+                            Piv.sign(connection, slot, key.publicBlob, copy, data, alg)
+                        } finally {
+                            copy.fill('\u0000')
+                        }
                     }) ?: throw Cancelled()
                     return result.getOrThrow()
                 } catch (e: InvalidPinException) {

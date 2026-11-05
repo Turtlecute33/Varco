@@ -57,6 +57,7 @@ import app.varco.ssh.Shell
 import app.varco.term.Scheme
 import app.varco.term.Schemes
 import app.varco.term.TermLook
+import app.varco.ui.components.ConfirmDialog
 import app.varco.ui.components.Icons
 import app.varco.ui.components.ListRow
 import app.varco.ui.components.SectionHeader
@@ -86,6 +87,7 @@ fun TerminalScreen(nav: Navigator) {
     var sessionSheet by remember { mutableStateOf(false) }
     var snippetSheet by remember { mutableStateOf(false) }
     var selecting by remember { mutableStateOf(false) }
+    var closing by remember { mutableStateOf<Shell?>(null) }
     val shellState by shell.state.collectAsStateWithLifecycle()
     val target by shell.target.collectAsStateWithLifecycle()
 
@@ -140,6 +142,8 @@ fun TerminalScreen(nav: Navigator) {
                         // The renderer comes from setTextSize; setTypeface needs it.
                         val px = fontPx(settings.fontSize, resources.displayMetrics)
                         setTextSize(px)
+                        // The view has no size yet, so this sets no PTY size.
+                        TermLook.last?.takeIf { it.first == settings.font }?.let { setTypeface(it.second) }
                         tag = px
                         view = this
                         app.sessions.view = this
@@ -181,7 +185,7 @@ fun TerminalScreen(nav: Navigator) {
     }
 
     // The font is read off the main thread, for a new view and after a font change in Settings. Until then,
-    // the view has the built-in monospace font.
+    // the view has the last font that was read, or the built-in monospace font.
     LaunchedEffect(view, settings.font) {
         val v = view ?: return@LaunchedEffect
         v.setTypeface(withContext(Dispatchers.IO) { TermLook.typeface(context, settings) })
@@ -204,10 +208,24 @@ fun TerminalScreen(nav: Navigator) {
             scheme = scheme,
             onDismiss = { sessionSheet = false },
             onSwitch = { app.sessions.currentId.value = it.id; sessionSheet = false },
-            onCloseTab = { app.sessions.close(it) },
-            onOpen = { app.sessions.open(it); sessionSheet = false },
+            onCloseTab = { if (it.state.value is Shell.State.Connected) closing = it else app.sessions.close(it) },
+            onOpen = {
+                sessionSheet = false
+                if (it.user.isBlank()) nav.go(Route.EditServer(it.id)) else app.sessions.open(it)
+            },
             onFiles = { sessionSheet = false; nav.go(Route.Files(shell.server.id)) },
             onHome = { sessionSheet = false; nav.back() },
+        )
+    }
+    // A live session ends only after a confirmation.
+    closing?.let { s ->
+        ConfirmDialog(
+            title = "Close ${s.target.collectAsStateWithLifecycle().value.name}?",
+            text = "The connection ends. Programs that run in this session stop.",
+            confirm = "Close",
+            destructive = true,
+            onConfirm = { app.sessions.close(s); closing = null },
+            onDismiss = { closing = null },
         )
     }
     if (snippetSheet) {
@@ -292,7 +310,7 @@ private fun SessionSheet(
             items(servers.sortedByDescending { it.lastUsed }, key = { it.id }) { server ->
                 ListRow(
                     title = server.name,
-                    subtitle = "${server.user}@${server.host}",
+                    subtitle = "${server.user.ifBlank { "?" }}@${server.host}",
                     icon = Icons.Add,
                     onClick = { onOpen(server) },
                 )

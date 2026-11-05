@@ -1,6 +1,7 @@
 package app.varco.ui.home
 
 import android.Manifest
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -54,12 +55,18 @@ fun HomeScreen(nav: Navigator) {
     val state by app.store.state.collectAsStateWithLifecycle()
     val shells by app.sessions.shells.collectAsStateWithLifecycle()
     var deleting by remember { mutableStateOf<Server?>(null) }
+    var closing by remember { mutableStateOf<Shell?>(null) }
+    val activity = LocalActivity.current
     val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
 
     fun connect(server: Server) {
         if (server.user.isBlank()) return nav.go(Route.EditServer(server.id))
-        // Once: the notification shows that sessions stay open and offers "Disconnect all". Denied is fine.
-        if (shells.isEmpty()) notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+        // The notification shows that sessions stay open and offers "Disconnect all". Denied is fine. After one
+        // denial the rationale flag is true, so the app does not ask again.
+        val permission = Manifest.permission.POST_NOTIFICATIONS
+        if (shells.isEmpty() && activity?.shouldShowRequestPermissionRationale(permission) == false) {
+            notifications.launch(permission)
+        }
         app.sessions.open(server)
         nav.go(Route.Terminal)
     }
@@ -86,7 +93,11 @@ fun HomeScreen(nav: Navigator) {
             EmptyState(
                 icon = Icons.Terminal,
                 title = "No servers yet",
-                message = "Add a server, or import your keys and ~/.ssh/config from Termux.",
+                message = if (app.store.loadFailed) {
+                    LOAD_FAILED
+                } else {
+                    "Add a server, or import your keys and ~/.ssh/config from Termux."
+                },
                 modifier = Modifier.fillMaxSize().padding(padding),
             ) {
                 Button(onClick = { nav.go(Route.EditServer(null)) }) { Text("Add server") }
@@ -96,12 +107,24 @@ fun HomeScreen(nav: Navigator) {
             return@Scaffold
         }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
+            if (app.store.loadFailed) {
+                item {
+                    Text(
+                        LOAD_FAILED,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
+                }
+            }
             if (shells.isNotEmpty()) {
                 item { SectionHeader("Open") }
                 items(shells, key = { it.id }) { shell -> ShellRow(shell, onOpen = {
                     app.sessions.currentId.value = shell.id
                     nav.go(Route.Terminal)
-                }, onClose = { app.sessions.close(shell) }) }
+                }, onClose = {
+                    if (shell.state.value is Shell.State.Connected) closing = shell else app.sessions.close(shell)
+                }) }
             }
             item { SectionHeader("Servers") }
             val sorted = state.servers.sortedWith(compareByDescending<Server> { it.lastUsed }.thenBy { it.name.lowercase() })
@@ -144,6 +167,18 @@ fun HomeScreen(nav: Navigator) {
         }
     }
 
+    // A live session ends only after a confirmation.
+    closing?.let { s ->
+        ConfirmDialog(
+            title = "Close ${s.target.collectAsStateWithLifecycle().value.name}?",
+            text = "The connection ends. Programs that run in this session stop.",
+            confirm = "Close",
+            destructive = true,
+            onConfirm = { app.sessions.close(s); closing = null },
+            onDismiss = { closing = null },
+        )
+    }
+
     deleting?.let { server ->
         ConfirmDialog(
             title = "Delete ${server.name}?",
@@ -159,6 +194,9 @@ fun HomeScreen(nav: Navigator) {
         )
     }
 }
+
+/** The store file is kept aside, and the next start reads it again if nothing was saved. */
+private const val LOAD_FAILED = "Saved data could not be opened. It is kept. Restart Varco before you make changes."
 
 @Composable
 private fun ShellRow(shell: Shell, onOpen: () -> Unit, onClose: () -> Unit) {

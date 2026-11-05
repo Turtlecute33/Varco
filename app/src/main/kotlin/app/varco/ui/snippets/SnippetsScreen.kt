@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.varco.app
 import app.varco.data.Snippet
 import app.varco.ui.components.Bar
+import app.varco.ui.components.ConfirmDialog
 import app.varco.ui.components.EmptyState
 import app.varco.ui.components.Icons
 import app.varco.ui.components.ListRow
@@ -46,6 +47,7 @@ fun SnippetsScreen(nav: Navigator) {
     val app = LocalContext.current.app
     val snippets = app.store.state.collectAsStateWithLifecycle().value.snippets
     var editing by remember { mutableStateOf<Snippet?>(null) }
+    var deleting by remember { mutableStateOf<Snippet?>(null) }
     val new = { editing = Snippet(UUID.randomUUID().toString(), "", "") }
 
     Scaffold(
@@ -74,9 +76,7 @@ fun SnippetsScreen(nav: Navigator) {
                         icon = Icons.Bolt,
                         onClick = { editing = snippet },
                     ) {
-                        IconButton(onClick = {
-                            app.store.update { st -> st.copy(snippets = st.snippets.filterNot { it.id == snippet.id }) }
-                        }) { Icon(Icons.Delete, contentDescription = "Delete") }
+                        IconButton(onClick = { deleting = snippet }) { Icon(Icons.Delete, contentDescription = "Delete") }
                     }
                 }
                 item { Spacer(Modifier.height(96.dp)) }
@@ -84,6 +84,19 @@ fun SnippetsScreen(nav: Navigator) {
         }
     }
 
+    deleting?.let { snippet ->
+        ConfirmDialog(
+            title = "Delete ${snippet.name}?",
+            text = "The saved command is deleted.",
+            confirm = "Delete",
+            destructive = true,
+            onConfirm = {
+                app.store.update { st -> st.copy(snippets = st.snippets.filterNot { it.id == snippet.id }) }
+                deleting = null
+            },
+            onDismiss = { deleting = null },
+        )
+    }
     editing?.let { snippet ->
         var name by remember(snippet.id) { mutableStateOf(snippet.name) }
         var text by remember(snippet.id) { mutableStateOf(snippet.text) }

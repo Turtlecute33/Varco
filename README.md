@@ -83,10 +83,12 @@ Supported keys: RSA, ECDSA P-256, and Ed25519 on firmware 5.7 and later.
   expected public key, and only then sends the PIN.
 - **Encrypted data.** Servers, saved passwords, imported keys, snippets and host keys are in one
   file. A Keystore key (StrongBox when available) encrypts it with AES-256-GCM.
-- **Screen and keyboard.** Screenshots and the Recents preview are blocked by default. The
-  keyboard does not learn what you type.
+- **Screen and keyboard.** Screenshots and the Recents preview are blocked by default. Other
+  apps cannot draw over Varco, and Varco ignores taps through an overlay. The keyboard does not
+  learn what you type.
 - **Clipboard.** Text that you copy in the terminal is marked sensitive and is cleared after 1
-  minute. Servers cannot set the clipboard (OSC 52) unless you allow it.
+  minute. Servers cannot set the clipboard (OSC 52) unless you allow it, and never from a tab
+  that is not on screen.
 - **App lock** (optional): fingerprint or screen lock to open Varco. Sessions stay connected.
 - **Memory tagging** (MTE) in sync mode on phones that have it, such as Pixel 8 and later.
 - **Verified build.** The build checks the SHA-256 of each dependency and of the Gradle
@@ -100,7 +102,8 @@ Supported keys: RSA, ECDSA P-256, and Ed25519 on firmware 5.7 and later.
 - Varco does not log terminal data. The notification shows only the number of open sessions.
 - No backups: your data stays out of cloud backup and device transfer.
 - Permissions: Internet (SSH), foreground service and notifications (sessions stay open in the
-  background), biometrics (app lock and keys), NFC (YubiKey) and vibration (terminal bell).
+  background), biometrics (app lock and keys), NFC (YubiKey), vibration (terminal bell) and
+  hide overlay windows (no other app draws over Varco).
 
 ## Download
 

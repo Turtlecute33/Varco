@@ -58,6 +58,7 @@ class Importer(
         }
         val byKind = files.groupBy(::classify)
         byKind[Kind.UNKNOWN].orEmpty().forEach { skipped += "${it.name}: not a key, config or theme file" }
+        byKind[Kind.PUBLIC_KEY].orEmpty().forEach { skipped += "${it.name}: a public key; pick the private key file" }
 
         // Keys first: config entries refer to them by file name.
         var keys = 0
@@ -124,7 +125,7 @@ class Importer(
             var retry = false
             while (pair.isEncrypted) {
                 val pass = prompts.ask(Ask.Passphrase("Import", file.name, retry)) ?: return null
-                // Encodes without a String, so that the passphrase can be wiped from memory.
+                // Encodes without an extra String and wipes these copies; the Compose text state is not wiped.
                 val buffer = Charsets.UTF_8.encode(CharBuffer.wrap(pass))
                 val bytes = ByteArray(buffer.remaining()).also { buffer.get(it) }
                 pass.fill('\u0000')
@@ -204,11 +205,14 @@ class Importer(
         val bytes = resolver.openInputStream(uri)?.use { input ->
             val out = ByteArrayOutputStream()
             val buffer = ByteArray(16 * 1024)
+            // Only fonts can be large; a lower limit for other files keeps many picked files from filling the heap.
+            var limit = MAX_TEXT_BYTES
             while (true) {
                 val n = input.read(buffer)
                 if (n < 0) break
                 out.write(buffer, 0, n)
-                require(out.size() <= MAX_BYTES) { "File too large" }
+                if (out.size() > limit && limit < MAX_BYTES && isFont(out.toByteArray())) limit = MAX_BYTES
+                require(out.size() <= limit) { "File too large" }
             }
             out.toByteArray()
         } ?: throw IllegalStateException("Cannot open $uri")
@@ -216,11 +220,7 @@ class Importer(
     }
 
     private fun classify(file: Picked): Kind {
-        val b = file.bytes
-        if (b.size >= 4) {
-            val magic = String(b, 0, 4, Charsets.ISO_8859_1)
-            if (magic == "\u0000\u0001\u0000\u0000" || magic == "OTTO" || magic == "true" || magic == "ttcf") return Kind.FONT
-        }
+        if (isFont(file.bytes)) return Kind.FONT
         val text = file.text
         val lines = text.lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith('#') }
         return when {
@@ -234,9 +234,17 @@ class Importer(
         }
     }
 
+    /** True when [b] starts with a TrueType, OpenType or collection magic. */
+    private fun isFont(b: ByteArray): Boolean {
+        if (b.size < 4) return false
+        val magic = String(b, 0, 4, Charsets.ISO_8859_1)
+        return magic == "\u0000\u0001\u0000\u0000" || magic == "OTTO" || magic == "true" || magic == "ttcf"
+    }
+
     companion object {
         const val FONT_CUSTOM = "custom"
         private const val MAX_BYTES = 20 * 1024 * 1024
+        private const val MAX_TEXT_BYTES = 1024 * 1024
         private val DEFAULT_KEYS = listOf("id_ed25519", "id_ecdsa", "id_rsa")
 
         /** Key types that Varco offers to servers (DSA and FIDO keys are not). */

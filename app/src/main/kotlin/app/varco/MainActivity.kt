@@ -35,6 +35,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         keepSplashUntilReady()
+        // Other apps' overlays cannot cover or change the host-key and secret prompts.
+        window.setHideOverlayWindows(true)
+        window.decorView.filterTouchesWhenObscured = true
         lifecycleScope.launch {
             app.store.state.map { it.settings.secureWindow }.distinctUntilChanged().collect(::applyWindowPrivacy)
         }

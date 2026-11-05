@@ -129,7 +129,9 @@ class Shell(
             conn.close()
             channel = null
         }
-        term.feedText("\r\n\u001b[2m[${printable(end ?: "Session ended")}]\u001b[0m\r\n")
+        // A soft reset before the notice. ESC \ ends an open OSC, DCS or APC string, ?1049l goes back to
+        // the main screen, DECSTR clears the modes (mouse, bracketed paste), the margins and the parser state.
+        term.feedText("\u001b\\\u001b[?1049l\u001b[!p\r\n\u001b[2m[${printable(end ?: "Session ended")}]\u001b[0m\r\n")
         _state.value = State.Closed(end)
     }
 

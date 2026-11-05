@@ -68,18 +68,24 @@ class Sessions(private val context: Context, private val store: Store, private v
 
         override fun onCopyTextToClipboard(session: TerminalSession, text: String, fromServer: Boolean) {
             if (fromServer && !store.state.value.settings.serverClipboard) return
+            // OSC 52 only from the tab on screen while Varco has the focus: a server must not change the
+            // clipboard while the user is in another app.
+            if (fromServer && view?.let { it.currentSession === session && it.hasWindowFocus() } != true) return
             // Terminal output often holds secrets: hidden from the clipboard preview and cleared after a minute.
             SensitiveClip.copy(context, "Terminal", text)
         }
 
         override fun onPasteTextFromClipboard(session: TerminalSession) {
             val clip = context.getSystemService(ClipboardManager::class.java).primaryClip ?: return
-            val text = clip.getItemAt(0)?.coerceToText(context)?.toString() ?: return
+            // Text items only: a URI item would make the main thread read a provider stream.
+            val text = clip.getItemAt(0)?.text?.toString() ?: return
             session.emulator?.paste(text)
         }
 
         override fun onBell(session: TerminalSession) {
             if (!store.state.value.settings.vibrateOnBell) return
+            // Only the tab on screen vibrates, and only while Varco is visible.
+            if (view?.takeIf { it.isShown }?.currentSession !== session) return
             // At most one tick per BELL_GAP_MS: output with many BEL bytes must not flood the vibrator.
             val now = SystemClock.uptimeMillis()
             if (now - lastBell < BELL_GAP_MS) return

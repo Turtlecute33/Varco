@@ -26,12 +26,21 @@ object TermLook {
         sessions.forEach { it.emulator?.mColors?.reset() }
     }
 
+    /**
+     * The font key and typeface that [typeface] returned last. A new terminal view sets it before its first layout,
+     * so that the PTY does not get a size from the built-in monospace font first.
+     */
+    @Volatile var last: Pair<String, Typeface>? = null
+        private set
+
     /** The imported font when the settings select it, else JetBrains Mono. Reads a file: not on the main thread. */
     fun typeface(context: Context, settings: Settings): Typeface {
         val file = Importer.fontFile(context)
-        if (settings.font == Importer.FONT_CUSTOM && file.exists()) {
-            runCatching { Typeface.createFromFile(file) }.getOrNull()?.let { return it }
+        val custom = if (settings.font == Importer.FONT_CUSTOM && file.exists()) {
+            runCatching { Typeface.createFromFile(file) }.getOrNull()
+        } else {
+            null
         }
-        return context.resources.getFont(R.font.jetbrains_mono)
+        return (custom ?: context.resources.getFont(R.font.jetbrains_mono)).also { last = settings.font to it }
     }
 }

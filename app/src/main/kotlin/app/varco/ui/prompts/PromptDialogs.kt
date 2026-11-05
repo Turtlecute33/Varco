@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -171,7 +173,7 @@ private fun InteractiveDialog(ask: Ask.Interactive) {
         // The title is Varco's own and names the server: server text must not look like a Varco dialog.
         title = { Text("${ask.server} asks") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Message from the server", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (ask.name.isNotBlank()) Text(clean(ask.name))
                 if (ask.instruction.isNotBlank()) Text(clean(ask.instruction))
@@ -199,7 +201,10 @@ private fun InteractiveDialog(ask: Ask.Interactive) {
 internal fun clean(text: String): String =
     printable(text).filterNot { it.category == CharCategory.FORMAT }.take(500)
 
-/** A dialog for one secret (PIN or passphrase). The answer is a CharArray that the caller wipes. */
+/**
+ * A dialog for one secret (PIN or passphrase). The answer is a CharArray copy that the caller wipes. The text field
+ * state is a String that the app cannot wipe, so the wipe only limits the number of copies.
+ */
 @Composable
 private fun SecretDialog(
     ask: Ask<*>,

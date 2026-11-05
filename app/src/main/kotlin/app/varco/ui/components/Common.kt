@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -34,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -155,9 +157,15 @@ fun SwitchRow(
     subtitle: String? = null,
     horizontalPadding: Dp = 20.dp,
 ) {
-    ListRow(title = title, subtitle = subtitle, horizontalPadding = horizontalPadding, onClick = { onChange(!checked) }) {
+    // The row is the one toggle, so TalkBack reads the title and the state as one item.
+    ListRow(
+        title = title,
+        modifier = Modifier.toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
+        subtitle = subtitle,
+        horizontalPadding = horizontalPadding,
+    ) {
         Spacer(Modifier.width(12.dp))
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 

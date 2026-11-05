@@ -47,8 +47,9 @@
   `KeyStore.PrivateKeyEntry` needs the same algorithm name on the certificate key. `ChipKeys.EcNamed` wraps
   the real self-signed Ed25519 certificate and only renames the key algorithm.
 - No logs of terminal data, the Termux engine's log calls are dropped. Terminal copies are marked sensitive and
-  cleared after 60 s (`SensitiveClip`, the same mechanism as Ombra).
-  OSC 52 from servers is off by default. The keyboard gets `IME_FLAG_NO_PERSONALIZED_LEARNING`.
+  cleared after 60 s (`SensitiveClip`, the same mechanism as Ombra). The clear runs only while the process
+  lives; after the process stops, Android's own clipboard timeout clears the clip.
+  OSC 52 from servers is off by default, and works only for the tab on screen while Varco has focus. The keyboard gets `IME_FLAG_NO_PERSONALIZED_LEARNING`.
 - `allowBackup=false` and data-extraction rules exclude everything.
 
 ## Tests

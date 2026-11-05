@@ -54,7 +54,8 @@ fun KeyScreen(id: String, nav: Navigator) {
     }
     var name by remember(key.id) { mutableStateOf(key.name) }
     var deleting by remember { mutableStateOf(false) }
-    val line = SshWire.authorizedKey(key.publicBlob, key.name.replace(' ', '-'))
+    val line = remember(key.publicKey, key.name) { SshWire.authorizedKey(key.publicBlob, key.name.replace(' ', '-')) }
+    val fingerprint = remember(key.publicKey) { SshWire.fingerprint(key.publicBlob) }
     val users = state.servers.filter { it.keyId == key.id }
 
     Scaffold(
@@ -85,7 +86,7 @@ fun KeyScreen(id: String, nav: Navigator) {
                 }
             }
             Info("Where", where(key))
-            Info("Fingerprint", SshWire.fingerprint(key.publicBlob), mono = true)
+            Info("Fingerprint", fingerprint, mono = true)
             Text(explain(key), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             Text("Public key", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)

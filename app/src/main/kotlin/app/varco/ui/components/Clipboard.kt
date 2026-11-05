@@ -14,6 +14,9 @@ import android.os.SystemClock
  * hide it) and cleared after a minute. Android lets only the focused app read the clipboard, so Varco cannot see
  * in the background whether the clip is still its own: a clear that falls due then clears the clip anyway, also
  * a clip that the user copied in another app within the minute. Writing to the clipboard needs no focus.
+ * The clear is best effort while the process lives: if Android freezes Varco, the clear runs late, at the
+ * latest when the window gets the focus again. If Android stops the process, only Android's own clipboard
+ * timeout clears the clip.
  * Same mechanism as Ombra's `SensitiveClip`.
  */
 object SensitiveClip {

@@ -572,7 +572,11 @@ public final class TerminalEmulator {
 
     public void processCodePoint(int b) {
         // The Application Program-Control (APC) string might be arbitrary non-printable characters, so handle that early.
-        if (mEscapeState == ESC_APC) {
+        // Varco: CAN and SUB cancel the APC string, as in xterm, so that a stray ESC _ cannot stop all output.
+        if ((mEscapeState == ESC_APC || mEscapeState == ESC_APC_ESCAPE) && (b == 24 || b == 26)) {
+            finishSequence();
+            return;
+        } else if (mEscapeState == ESC_APC) {
             doApc(b);
             return;
         } else if (mEscapeState == ESC_APC_ESCAPE) {
@@ -2586,10 +2590,9 @@ public final class TerminalEmulator {
         text = text.replaceAll("\r?\n", "\r");
 
         // Then: Implement bracketed paste mode if enabled:
+        // Varco: one write, so that the input queue takes or drops the markers and the text together.
         boolean bracketed = isDecsetInternalBitSet(DECSET_BIT_BRACKETED_PASTE_MODE);
-        if (bracketed) mSession.write("\033[200~");
-        mSession.write(text);
-        if (bracketed) mSession.write("\033[201~");
+        mSession.write(bracketed ? "\033[200~" + text + "\033[201~" : text);
     }
 
     /** http://www.vt100.net/docs/vt510-rm/DECSC */

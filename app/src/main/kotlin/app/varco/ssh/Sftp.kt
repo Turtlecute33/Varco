@@ -3,7 +3,9 @@ package app.varco.ssh
 import com.jcraft.jsch.ChannelSftp
 import com.jcraft.jsch.SftpException
 import com.jcraft.jsch.SftpProgressMonitor
+import java.io.ByteArrayInputStream
 import java.io.InputStream
+import java.io.InterruptedIOException
 import java.io.OutputStream
 
 /**
@@ -18,6 +20,9 @@ class Sftp(connection: SshConnection) : AutoCloseable {
     val home: String = channel.home
 
     val isOpen: Boolean get() = channel.isConnected && !channel.isClosed
+
+    /** Set from any thread to stop the running transfer; it then fails with "Transfer stopped". */
+    @Volatile var cancel = false
 
     /** Folders first, then files; both by name. "." and ".." are left out. */
     fun list(path: String): List<Entry> {
@@ -41,8 +46,11 @@ class Sftp(connection: SshConnection) : AutoCloseable {
     /** True when the link at [path] goes to a folder. A broken link counts as a file. */
     fun isDirLink(path: String): Boolean = runCatching { channel.stat(lit(path)).isDir }.getOrDefault(false)
 
-    fun download(path: String, out: OutputStream, progress: (Long) -> Unit) =
+    fun download(path: String, out: OutputStream, progress: (Long) -> Unit) {
+        cancel = false
         channel.get(lit(path), out, Monitor(progress))
+        stopIfCancelled()
+    }
 
     /**
      * Replaces a file at [path]: check [exists] first, so that the user can decide. With posix-rename, the data
@@ -50,14 +58,22 @@ class Sftp(connection: SshConnection) : AutoCloseable {
      * old file. Else, or when the folder is not writable, the upload writes into the file itself.
      */
     fun upload(input: InputStream, path: String, progress: (Long) -> Unit) {
+        cancel = false
         if (channel.getExtension(POSIX_RENAME) != "1" || !uploadByRename(input, path, progress)) {
             channel.put(input, lit(path), Monitor(progress), ChannelSftp.OVERWRITE)
+            stopIfCancelled()
         }
     }
 
+    /** jsch ends a transfer without an error when the monitor stops it: make it fail. */
+    private fun stopIfCancelled() {
+        if (cancel) throw InterruptedIOException("Transfer stopped")
+    }
+
     /**
-     * Uploads to ".<name>.varco-part" next to the file, copies the mode, and renames it over the file. A link
-     * stays a link: its target gets the data. False, before any data is read, when this is not possible.
+     * Uploads to ".<name>.varco-part" next to the file, with the mode of the file set before the data, and renames
+     * it over the file. A link stays a link: its target gets the data. False, before any data is read, when this
+     * is not possible.
      */
     private fun uploadByRename(input: InputStream, path: String, progress: (Long) -> Unit): Boolean {
         val isLink = runCatching { channel.lstat(lit(path)).isLink }.getOrDefault(false)
@@ -66,15 +82,28 @@ class Sftp(connection: SshConnection) : AutoCloseable {
         val part = join(parent(target), ".${target.substringAfterLast('/')}.varco-part")
         // A part file left by a cut-off upload, or a link in its place: remove it, so that no data goes through a link.
         runCatching { channel.rm(lit(part)) }
+        // Null for a new file: the default mode is then correct.
+        val mode = runCatching { channel.stat(lit(target)).permissions and 0xfff }.getOrNull()
         var sent = false
         try {
-            channel.put(input, lit(part), Monitor { sent = true; progress(it) }, ChannelSftp.OVERWRITE)
-            runCatching { channel.chmod(channel.stat(lit(target)).permissions and 0xfff, lit(part)) }
+            if (mode != null) {
+                // Set the mode on an empty part file first, so that the data is never in a file with a wider mode.
+                // The owner can write (0200), so that a read-only file (0400) can also be replaced.
+                channel.put(ByteArrayInputStream(ByteArray(0)), lit(part), ChannelSftp.OVERWRITE)
+                channel.chmod(mode or OWNER_WRITE, lit(part))
+            }
+            val putMode = if (mode != null) ChannelSftp.APPEND else ChannelSftp.OVERWRITE
+            channel.put(input, lit(part), Monitor { sent = true; progress(it) }, putMode)
+            // A stopped upload must not take the place of the file: the catch removes the part file.
+            stopIfCancelled()
+            if (mode != null && (mode and OWNER_WRITE) == 0) channel.chmod(mode, lit(part))
             channel.rename(lit(part), lit(target))
         } catch (e: Exception) {
             runCatching { channel.rm(lit(part)) }
-            // No write access to the folder and no data read: the caller writes into the file itself.
-            if (!sent && e is SftpException && e.id == ChannelSftp.SSH_FX_PERMISSION_DENIED) return false
+            // No write access to the folder (or no chmod) and no data read: the caller writes into the file itself,
+            // which keeps its mode.
+            val refused = e is SftpException && (e.id == ChannelSftp.SSH_FX_PERMISSION_DENIED || e.id == ChannelSftp.SSH_FX_OP_UNSUPPORTED)
+            if (!sent && refused) return false
             throw e
         }
         return true
@@ -97,13 +126,13 @@ class Sftp(connection: SshConnection) : AutoCloseable {
 
     override fun close() = channel.disconnect()
 
-    private class Monitor(private val progress: (Long) -> Unit) : SftpProgressMonitor {
+    private inner class Monitor(private val progress: (Long) -> Unit) : SftpProgressMonitor {
         private var total = 0L
         override fun init(op: Int, src: String?, dest: String?, max: Long) = Unit
         override fun count(count: Long): Boolean {
             total += count
             progress(total)
-            return true
+            return !cancel
         }
         override fun end() = Unit
     }
@@ -112,7 +141,10 @@ class Sftp(connection: SshConnection) : AutoCloseable {
         private const val TIMEOUT_MS = 15_000
 
         /** Links that [list] checks for a folder target. */
-        private const val LINK_STATS = 50
+        private const val LINK_STATS = 16
+
+        /** Mode bit 0200: the owner can write. */
+        private const val OWNER_WRITE = 0x80
 
         /** The SFTP extension that renames over an existing file in one step. */
         private const val POSIX_RENAME = "posix-rename@openssh.com"
