@@ -4,6 +4,8 @@
 
     <!-- SSH connections to the servers that the user adds. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- SSH to servers on the local network (Android 17+, "Nearby devices"). Asked only for a local host. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <!-- Keeps open SSH sessions connected while the app is in the background. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- The type of that service: interactive SSH sessions. -->

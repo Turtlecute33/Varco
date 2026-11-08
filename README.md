@@ -101,9 +101,10 @@ Supported keys: RSA, ECDSA P-256, and Ed25519 on firmware 5.7 and later.
   ask for a downloadable font.
 - Varco does not log terminal data. The notification shows only the number of open sessions.
 - No backups: your data stays out of cloud backup and device transfer.
-- Permissions: Internet (SSH), foreground service and notifications (sessions stay open in the
-  background), biometrics (app lock and keys), NFC (YubiKey), vibration (terminal bell) and
-  hide overlay windows (no other app draws over Varco).
+- Permissions: Internet (SSH), nearby devices (SSH to a server on your local network, asked only
+  then), foreground service and notifications (sessions stay open in the background), biometrics
+  (app lock and keys), NFC (YubiKey), vibration (terminal bell) and hide overlay windows (no other
+  app draws over Varco).
 
 ## Download
 

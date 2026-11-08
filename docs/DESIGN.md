@@ -52,6 +52,19 @@
   OSC 52 from servers is off by default, and works only for the tab on screen while Varco has focus. The keyboard gets `IME_FLAG_NO_PERSONALIZED_LEARNING`.
 - `allowBackup=false` and data-extraction rules exclude everything.
 
+## Local network
+
+- Android 17 blocks the local network for apps that target SDK 37 until the user allows "Nearby devices"
+  (`ACCESS_LOCAL_NETWORK`). A blocked TCP connection only times out; the platform gives no error code.
+- Varco asks for it only when the user connects to a host that looks local (`LocalNetwork.looksLocal`: a
+  private, link-local or unique-local IP address, a name without a dot, or `.local`, `.lan`, `.home.arpa`,
+  `.internal`). The check reads the text only, so the UI thread does no DNS lookup. The connection waits for
+  the answer, and it starts also after a denial.
+- A public name with a LAN address is not found by this check. While the permission is off, a time-out
+  message tells the user to allow Nearby devices.
+- A VPN with "Block connections without VPN" (lockdown) still blocks local hosts. Android lets only the VPN
+  app itself through, so Varco cannot change this.
+
 ## Tests
 
 - JVM: `./gradlew :app:testDebugUnitTest` (config, colours, known_hosts, the host key trust rule, app lock timing,
@@ -61,4 +74,7 @@
   imported Ed25519 (with passphrase) / RSA-3072 / ECDSA keys, per-use auth with device PIN, app lock,
   host-key prompt, reconnect, vim, truecolor, extra keys, snippets, SFTP list and download, Termux import,
   release build with R8. Negotiated: `mlkem768x25519-sha256`, `chacha20-poly1305@openssh.com`.
+- Device test (2026-11-08, Pixel, Android 17, release 0.2.4): the tap on a LAN server asked for Nearby devices;
+  after Allow, SSH worked through a VPN with local network access on and lockdown off. Before the fix, app ops
+  showed an `ACCESS_LOCAL_NETWORK` reject. With lockdown on, Android still refuses the connection (EACCES).
 - Not testable on the emulator: YubiKey over NFC/USB, StrongBox, pinch zoom.

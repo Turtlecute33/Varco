@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,6 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.varco.app
 import app.varco.data.Server
 import app.varco.data.withoutServer
+import app.varco.ssh.LocalNetwork
 import app.varco.ssh.Shell
 import app.varco.term.Schemes
 import app.varco.ui.components.Bar
@@ -51,24 +53,42 @@ import app.varco.ui.nav.Route
 /** Open sessions and saved servers. A tap on a server opens a new terminal tab. */
 @Composable
 fun HomeScreen(nav: Navigator) {
-    val app = LocalContext.current.app
+    val context = LocalContext.current
+    val app = context.app
     val state by app.store.state.collectAsStateWithLifecycle()
     val shells by app.sessions.shells.collectAsStateWithLifecycle()
     var deleting by remember { mutableStateOf<Server?>(null) }
     var closing by remember { mutableStateOf<Shell?>(null) }
     val activity = LocalActivity.current
-    val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
+    fun open(server: Server) {
+        app.sessions.open(server)
+        nav.go(Route.Terminal)
+    }
+
+    // The server that waits for the answer to the local network question; saved over a configuration change.
+    var waiting by rememberSaveable { mutableStateOf<String?>(null) }
+    // One launcher: Android cancels a second permission request while one is open.
+    val permissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        // Connect also after a denial: the time-out message then names the permission (LocalNetwork).
+        state.servers.firstOrNull { it.id == waiting }?.let(::open)
+        waiting = null
+    }
 
     fun connect(server: Server) {
         if (server.user.isBlank()) return nav.go(Route.EditServer(server.id))
         // The notification shows that sessions stay open and offers "Disconnect all". Denied is fine. After one
         // denial the rationale flag is true, so the app does not ask again.
-        val permission = Manifest.permission.POST_NOTIFICATIONS
-        if (shells.isEmpty() && activity?.shouldShowRequestPermissionRationale(permission) == false) {
-            notifications.launch(permission)
+        val notification = Manifest.permission.POST_NOTIFICATIONS
+        val ask = buildList {
+            if (shells.isEmpty() && activity?.shouldShowRequestPermissionRationale(notification) == false) add(notification)
+            if (!LocalNetwork.allowed(context) && LocalNetwork.looksLocal(server.host)) add(LocalNetwork.PERMISSION)
         }
-        app.sessions.open(server)
-        nav.go(Route.Terminal)
+        // A local server waits for the answer, because its connection fails while the permission is off.
+        val wait = LocalNetwork.PERMISSION in ask
+        if (wait) waiting = server.id
+        if (ask.isNotEmpty()) permissions.launch(ask.toTypedArray())
+        if (!wait) open(server)
     }
 
     Scaffold(

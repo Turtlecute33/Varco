@@ -34,6 +34,8 @@ class Shell(
     val term: TerminalSession,
     private val env: SshEnv,
     private val scope: CoroutineScope,
+    /** [LocalNetwork.allowed], read when a connection ends. */
+    private val localNetworkAllowed: () -> Boolean,
 ) {
     sealed interface State {
         data object Connecting : State
@@ -122,7 +124,7 @@ class Shell(
         } catch (_: Cancelled) {
             "Cancelled"
         } catch (e: Exception) {
-            describe(e)
+            describe(e, localNetworkAllowed())
         } finally {
             withContext(Dispatchers.Main) { term.setTransport(null) }
             channel?.disconnect()
@@ -147,7 +149,7 @@ class Shell(
         const val CHANNEL_TIMEOUT_MS = 15_000
 
         /** A short reason for the end of a connection, shown in the terminal. */
-        fun describe(e: Throwable): String {
+        fun describe(e: Throwable, localNetworkAllowed: Boolean): String {
             val cause = generateSequence(e) { it.cause }.toList()
             return when {
                 // jsch's JSchAuthCancelException is not public.
@@ -155,7 +157,9 @@ class Shell(
                 cause.any { it is UnknownHostException } -> "Unknown host"
                 cause.any { it is ConnectException } -> "Connection refused"
                 cause.any { it is NoRouteToHostException } -> "No route to host"
-                cause.any { it is SocketTimeoutException } -> "Connection timed out"
+                // Android 17 drops the packets of a blocked local connection, so it ends as a time-out (LocalNetwork).
+                cause.any { it is SocketTimeoutException } ->
+                    if (localNetworkAllowed) "Connection timed out" else "Connection timed out. For a server on this network, allow Nearby devices"
                 cause.any { it is JSchChangedHostKeyException } -> "Host key changed — not trusted"
                 cause.any { it is JSchUnknownHostKeyException } -> "Host key not trusted"
                 cause.any { it is SignFailed } -> cause.first { it is SignFailed }.message.orEmpty()
