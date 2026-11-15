@@ -162,7 +162,7 @@ class Store(dir: File, private val vault: Vault, private val scope: CoroutineSco
         private fun Settings.json() = JSONObject().put("schemeId", schemeId).put("fontSize", fontSize).put("font", font)
             .put("appLock", appLock).put("lockAfter", lockAfter).put("secureWindow", secureWindow)
             .put("keepScreenOn", keepScreenOn).put("vibrateOnBell", vibrateOnBell)
-            .put("serverClipboard", serverClipboard).put("scrollback", scrollback).put("serverOrder", serverOrder.name)
+            .put("serverClipboard", serverClipboard).put("scrollback", scrollback)
 
         private fun JSONObject.settings(): Settings {
             val d = Settings()
@@ -177,7 +177,6 @@ class Store(dir: File, private val vault: Vault, private val scope: CoroutineSco
                 vibrateOnBell = optBoolean("vibrateOnBell", d.vibrateOnBell),
                 serverClipboard = optBoolean("serverClipboard", d.serverClipboard),
                 scrollback = optInt("scrollback", d.scrollback),
-                serverOrder = optString("serverOrder").let { n -> ServerOrder.entries.firstOrNull { it.name == n } } ?: d.serverOrder,
             )
         }
     }
