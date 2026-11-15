@@ -74,7 +74,6 @@ fun EditServerScreen(id: String?, nav: Navigator) {
             user = user.trim(),
             keyId = keyId,
             password = if (savePassword && password.isNotEmpty()) password else null,
-            lastUsed = old?.lastUsed ?: 0,
         )
         app.store.update { st ->
             st.copy(servers = if (old == null) st.servers + server else st.servers.map { if (it.id == server.id) server else it })

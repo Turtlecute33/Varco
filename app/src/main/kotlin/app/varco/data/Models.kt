@@ -30,6 +30,15 @@ fun AppState.withoutServer(id: String): AppState {
     )
 }
 
+/** Moves the server [id] to the place of the server [to]. The servers between them move by one place. */
+fun List<Server>.moved(id: String, to: String): List<Server> {
+    val from = indexOfFirst { it.id == id }
+    val target = indexOfFirst { it.id == to }
+    if (from < 0 || target < 0 || from == target) return this
+    return toMutableList().apply { add(target, removeAt(from)) }
+}
+
+/** A saved server. The list order in [AppState.servers] is the order on screen: the user sets it by drag. */
 data class Server(
     val id: String,
     val name: String,
@@ -40,7 +49,6 @@ data class Server(
     val keyId: String? = null,
     /** Saved password, or null to ask on each connection. Stored only inside the encrypted store. */
     val password: String? = null,
-    val lastUsed: Long = 0,
 )
 
 /**

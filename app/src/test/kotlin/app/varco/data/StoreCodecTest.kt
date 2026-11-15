@@ -8,7 +8,7 @@ class StoreCodecTest {
     @Test
     fun roundTrip() {
         val state = AppState(
-            servers = listOf(Server("s1", "Relay", "198.51.100.20", 22, "root", keyId = "k1", password = null, lastUsed = 5)),
+            servers = listOf(Server("s1", "Relay", "198.51.100.20", 22, "root", keyId = "k1", password = null)),
             keys = listOf(
                 SshKey("k1", "YubiKey 9a", SshKey.Kind.YUBIKEY_PIV, "ssh-rsa", "AAAA", pivSlot = 0x9a),
                 SshKey("k2", "Phone", SshKey.Kind.KEYSTORE, "ssh-ed25519", "BBBB", alias = "varco.key.x", authPerUse = true),

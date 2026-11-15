@@ -36,7 +36,6 @@ class Sessions(private val context: Context, private val store: Store, private v
         val shell = Shell(server, TerminalSession(store.state.value.settings.scrollback, client), env, scope) { LocalNetwork.allowed(context) }
         _shells.update { it + shell }
         currentId.value = shell.id
-        store.update { st -> st.copy(servers = st.servers.map { if (it.id == server.id) it.copy(lastUsed = System.currentTimeMillis()) else it }) }
         shell.start()
         return shell
     }

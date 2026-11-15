@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -33,10 +34,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.varco.app
 import app.varco.data.Server
+import app.varco.data.moved
 import app.varco.data.withoutServer
 import app.varco.ssh.LocalNetwork
 import app.varco.ssh.Shell
@@ -46,11 +51,17 @@ import app.varco.ui.components.ConfirmDialog
 import app.varco.ui.components.EmptyState
 import app.varco.ui.components.Icons
 import app.varco.ui.components.ListRow
+import app.varco.ui.components.Reorder
 import app.varco.ui.components.SectionHeader
+import app.varco.ui.components.rememberReorder
+import app.varco.ui.components.reorderRow
 import app.varco.ui.nav.Navigator
 import app.varco.ui.nav.Route
 
-/** Open sessions and saved servers. A tap on a server opens a new terminal tab. */
+/**
+ * Open sessions and saved servers. A tap on a server opens a new terminal tab. The servers are in the order in
+ * which they were added; a long press and a drag move a server, and TalkBack has "Move up" and "Move down" actions.
+ */
 @Composable
 fun HomeScreen(nav: Navigator) {
     val context = LocalContext.current
@@ -91,6 +102,10 @@ fun HomeScreen(nav: Navigator) {
         if (!wait) open(server)
     }
 
+    fun move(id: String, to: String) = app.store.update { it.copy(servers = it.servers.moved(id, to)) }
+    val list = rememberLazyListState()
+    val reorder = rememberReorder(list) { from, to -> move(from.toString(), to.toString()) }
+
     Scaffold(
         topBar = {
             Bar("Varco") {
@@ -126,7 +141,7 @@ fun HomeScreen(nav: Navigator) {
             }
             return@Scaffold
         }
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
+        LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = padding) {
             if (app.store.loadFailed) {
                 item {
                     Text(
@@ -147,12 +162,19 @@ fun HomeScreen(nav: Navigator) {
                 }) }
             }
             item { SectionHeader("Servers") }
-            val sorted = state.servers.sortedWith(compareByDescending<Server> { it.lastUsed }.thenBy { it.name.lowercase() })
-            items(sorted, key = { it.id }) { server ->
+            val servers = state.servers
+            items(servers, key = { it.id }, contentType = { Reorder.ROW }) { server ->
                 var menu by remember { mutableStateOf(false) }
                 val keyName = state.keys.firstOrNull { it.id == server.keyId }?.name
                 ListRow(
                     title = server.name,
+                    modifier = Modifier.reorderRow(this, reorder, server.id).semantics {
+                        val i = servers.indexOfFirst { it.id == server.id }
+                        customActions = listOfNotNull(
+                            servers.getOrNull(i - 1)?.let { CustomAccessibilityAction("Move up") { move(server.id, it.id); true } },
+                            servers.getOrNull(i + 1)?.let { CustomAccessibilityAction("Move down") { move(server.id, it.id); true } },
+                        )
+                    },
                     subtitle = buildString {
                         append(server.user.ifBlank { "?" }).append('@').append(server.host)
                         if (server.port != 22) append(':').append(server.port)

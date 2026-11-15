@@ -309,7 +309,7 @@ private fun SessionSheet(
                 }
             }
             item { SectionHeader("New session") }
-            items(servers.sortedByDescending { it.lastUsed }, key = { it.id }) { server ->
+            items(servers, key = { it.id }) { server ->
                 ListRow(
                     title = server.name,
                     subtitle = "${server.user.ifBlank { "?" }}@${server.host}",

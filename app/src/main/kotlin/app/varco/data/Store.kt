@@ -133,11 +133,11 @@ class Store(dir: File, private val vault: Vault, private val scope: CoroutineSco
         private fun JSONObject.str(name: String): String? = if (isNull(name)) null else optString(name)
 
         private fun Server.json() = JSONObject().put("id", id).put("name", name).put("host", host).put("port", port)
-            .put("user", user).put("keyId", keyId).put("password", password).put("lastUsed", lastUsed)
+            .put("user", user).put("keyId", keyId).put("password", password)
 
         private fun JSONObject.server() = Server(
             id = getString("id"), name = getString("name"), host = getString("host"), port = optInt("port", 22),
-            user = getString("user"), keyId = str("keyId"), password = str("password"), lastUsed = optLong("lastUsed"),
+            user = getString("user"), keyId = str("keyId"), password = str("password"),
         )
 
         private fun SshKey.json() = JSONObject().put("id", id).put("name", name).put("kind", kind.name).put("type", type)
