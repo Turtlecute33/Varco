@@ -30,6 +30,24 @@ fun AppState.withoutServer(id: String): AppState {
     )
 }
 
+/** How the server list is sorted. [CUSTOM] is the order of [AppState.servers], which the user sets by drag. */
+enum class ServerOrder { RECENT, NAME, CUSTOM }
+
+/** The servers in [order], for the home screen and the new-session sheet. */
+fun List<Server>.ordered(order: ServerOrder): List<Server> = when (order) {
+    ServerOrder.RECENT -> sortedWith(compareByDescending<Server> { it.lastUsed }.thenBy { it.name.lowercase() })
+    ServerOrder.NAME -> sortedBy { it.name.lowercase() }
+    ServerOrder.CUSTOM -> this
+}
+
+/** Moves the server [id] to the place of the server [to]. The servers between them move by one place. */
+fun List<Server>.moved(id: String, to: String): List<Server> {
+    val from = indexOfFirst { it.id == id }
+    val target = indexOfFirst { it.id == to }
+    if (from < 0 || target < 0 || from == target) return this
+    return toMutableList().apply { add(target, removeAt(from)) }
+}
+
 data class Server(
     val id: String,
     val name: String,
@@ -104,6 +122,7 @@ data class Settings(
     val serverClipboard: Boolean = false,
     /** Lines kept in scrollback. */
     val scrollback: Int = 5000,
+    val serverOrder: ServerOrder = ServerOrder.RECENT,
 ) {
     companion object {
         /** Terminal font size range in sp, for the Settings slider and for pinch zoom. */

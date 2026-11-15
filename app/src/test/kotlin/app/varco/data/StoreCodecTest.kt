@@ -17,7 +17,7 @@ class StoreCodecTest {
             knownHosts = listOf(KnownHost("example.com", 2222, "ssh-ed25519", "CCCC")),
             importedKnownHosts = "host ssh-ed25519 DDDD",
             schemes = listOf(Schemes.all[2]),
-            settings = Settings(schemeId = "nord", fontSize = 15, appLock = true, lockAfter = 0, serverClipboard = true),
+            settings = Settings(schemeId = "nord", fontSize = 15, appLock = true, lockAfter = 0, serverClipboard = true, serverOrder = ServerOrder.CUSTOM),
         )
         val back = Store.decode(Store.encode(state))
         assertEquals(state.servers, back.servers)

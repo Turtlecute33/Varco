@@ -30,6 +30,7 @@ forwarding, jump hosts, Mosh, agent forwarding or FIDO2 security keys.
 
 - **Terminal**: the Termux terminal engine (true colour, mouse, vim, htop, tmux), full screen,
   with an extra-keys bar (ESC, TAB, CTRL, ALT, arrows, paste, `/ |`, snippets). Pinch to zoom.
+- **Server list**: sort the servers by last use or by name, or drag them into your own order.
 - **Sessions**: more than one session at the same time. Sessions stay connected in the
   background. A reconnect keeps the screen and the scrollback.
 - **Keys**: new keys in the secure chip (Ed25519 or ECDSA P-256), YubiKey PIV keys over NFC and

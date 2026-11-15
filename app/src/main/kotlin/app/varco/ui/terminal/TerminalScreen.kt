@@ -53,6 +53,7 @@ import app.varco.app
 import app.varco.data.Server
 import app.varco.data.Settings.Companion.MAX_FONT
 import app.varco.data.Settings.Companion.MIN_FONT
+import app.varco.data.ordered
 import app.varco.ssh.Shell
 import app.varco.term.Scheme
 import app.varco.term.Schemes
@@ -206,7 +207,7 @@ fun TerminalScreen(nav: Navigator) {
         SessionSheet(
             shells = shells,
             current = shell,
-            servers = state.servers,
+            servers = remember(state.servers, state.settings.serverOrder) { state.servers.ordered(state.settings.serverOrder) },
             scheme = scheme,
             onDismiss = { sessionSheet = false },
             onSwitch = { app.sessions.currentId.value = it.id; sessionSheet = false },
@@ -309,7 +310,7 @@ private fun SessionSheet(
                 }
             }
             item { SectionHeader("New session") }
-            items(servers.sortedByDescending { it.lastUsed }, key = { it.id }) { server ->
+            items(servers, key = { it.id }) { server ->
                 ListRow(
                     title = server.name,
                     subtitle = "${server.user.ifBlank { "?" }}@${server.host}",

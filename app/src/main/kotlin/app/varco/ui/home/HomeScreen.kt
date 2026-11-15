@@ -6,13 +6,16 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -24,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,24 +37,38 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.varco.app
 import app.varco.data.Server
+import app.varco.data.ServerOrder
+import app.varco.data.moved
+import app.varco.data.ordered
 import app.varco.data.withoutServer
 import app.varco.ssh.LocalNetwork
 import app.varco.ssh.Shell
 import app.varco.term.Schemes
 import app.varco.ui.components.Bar
 import app.varco.ui.components.ConfirmDialog
+import app.varco.ui.components.DragHandle
 import app.varco.ui.components.EmptyState
 import app.varco.ui.components.Icons
 import app.varco.ui.components.ListRow
+import app.varco.ui.components.Reorder
 import app.varco.ui.components.SectionHeader
+import app.varco.ui.components.rememberReorder
+import app.varco.ui.components.reorderRow
 import app.varco.ui.nav.Navigator
 import app.varco.ui.nav.Route
 
-/** Open sessions and saved servers. A tap on a server opens a new terminal tab. */
+/**
+ * Open sessions and saved servers. A tap on a server opens a new terminal tab. In the custom order, the handle of
+ * a server moves it, and TalkBack has "Move up" and "Move down" actions.
+ */
 @Composable
 fun HomeScreen(nav: Navigator) {
     val context = LocalContext.current
@@ -91,6 +109,12 @@ fun HomeScreen(nav: Navigator) {
         if (!wait) open(server)
     }
 
+    val order = state.settings.serverOrder
+    val servers = remember(state.servers, order) { state.servers.ordered(order) }
+    fun move(id: String, to: String) = app.store.update { it.copy(servers = it.servers.moved(id, to)) }
+    val list = rememberLazyListState()
+    val reorder = rememberReorder(list) { from, to -> move(from.toString(), to.toString()) }
+
     Scaffold(
         topBar = {
             Bar("Varco") {
@@ -126,7 +150,7 @@ fun HomeScreen(nav: Navigator) {
             }
             return@Scaffold
         }
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
+        LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = padding) {
             if (app.store.loadFailed) {
                 item {
                     Text(
@@ -146,13 +170,33 @@ fun HomeScreen(nav: Navigator) {
                     if (shell.state.value is Shell.State.Connected) closing = shell else app.sessions.close(shell)
                 }) }
             }
-            item { SectionHeader("Servers") }
-            val sorted = state.servers.sortedWith(compareByDescending<Server> { it.lastUsed }.thenBy { it.name.lowercase() })
-            items(sorted, key = { it.id }) { server ->
+            item {
+                Row {
+                    SectionHeader("Servers", Modifier.weight(1f).alignByBaseline())
+                    OrderMenu(order, Modifier.alignByBaseline()) { o ->
+                        app.store.update { it.copy(settings = it.settings.copy(serverOrder = o)) }
+                    }
+                }
+            }
+            val custom = order == ServerOrder.CUSTOM
+            items(servers, key = { it.id }, contentType = { Reorder.ROW }) { server ->
                 var menu by remember { mutableStateOf(false) }
                 val keyName = state.keys.firstOrNull { it.id == server.keyId }?.name
                 ListRow(
                     title = server.name,
+                    modifier = Modifier.reorderRow(this, reorder, server.id).then(
+                        if (!custom) {
+                            Modifier
+                        } else {
+                            Modifier.semantics {
+                                val i = servers.indexOfFirst { it.id == server.id }
+                                customActions = listOfNotNull(
+                                    servers.getOrNull(i - 1)?.let { CustomAccessibilityAction("Move up") { move(server.id, it.id); true } },
+                                    servers.getOrNull(i + 1)?.let { CustomAccessibilityAction("Move down") { move(server.id, it.id); true } },
+                                )
+                            }
+                        },
+                    ),
                     subtitle = buildString {
                         append(server.user.ifBlank { "?" }).append('@').append(server.host)
                         if (server.port != 22) append(':').append(server.port)
@@ -181,6 +225,7 @@ fun HomeScreen(nav: Navigator) {
                             )
                         }
                     }
+                    if (custom) DragHandle(reorder, server.id)
                 }
             }
             item { Spacer(Modifier.height(96.dp)) }
@@ -214,6 +259,37 @@ fun HomeScreen(nav: Navigator) {
         )
     }
 }
+
+/** The button that shows the server order and opens the menu that changes it. */
+@Composable
+private fun OrderMenu(order: ServerOrder, modifier: Modifier = Modifier, onChange: (ServerOrder) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box(modifier.padding(end = 8.dp)) {
+        TextButton(onClick = { open = true }) {
+            // TalkBack reads "Server order, <order>, Button".
+            Icon(Icons.Sort, contentDescription = "Server order", modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(order.label)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            ServerOrder.entries.forEach { o ->
+                DropdownMenuItem(
+                    text = { Text(o.label) },
+                    onClick = { open = false; onChange(o) },
+                    modifier = Modifier.semantics { selected = o == order },
+                    trailingIcon = { if (o == order) Icon(Icons.Check, contentDescription = null) },
+                )
+            }
+        }
+    }
+}
+
+private val ServerOrder.label
+    get() = when (this) {
+        ServerOrder.RECENT -> "Last used"
+        ServerOrder.NAME -> "Name"
+        ServerOrder.CUSTOM -> "Custom"
+    }
 
 /** The store file is kept aside, and the next start reads it again if nothing was saved. */
 private const val LOAD_FAILED = "Saved data could not be opened. It is kept. Restart Varco before you make changes."
