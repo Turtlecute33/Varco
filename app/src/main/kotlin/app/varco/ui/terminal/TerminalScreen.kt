@@ -181,6 +181,8 @@ fun TerminalScreen(nav: Navigator) {
             chipDot = dotColor(shellState, scheme),
             onChip = { sessionSheet = true },
             onSnippets = { snippetSheet = true },
+            // The same path as Paste in the long-press menu: text only, bracketed paste if the program asks for it.
+            onPaste = { view?.currentSession?.onPasteTextFromClipboard() },
         )
     }
 

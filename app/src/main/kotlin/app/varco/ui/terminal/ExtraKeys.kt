@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
@@ -62,9 +63,9 @@ interface KeySink {
 /**
  * Two rows above the keyboard, in the terminal colours. The arrows are on the right, as on a computer keyboard:
  * [● server ▾] ESC TAB CTRL      ↑
- * ALT - / | ⚡                 ← ↓ →
- * Arrows repeat while held. A long press on "-", "/" and "|" sends "_", "\" and "&". A tap on CTRL or ALT
- * applies it to the next key; a long press locks it.
+ * ALT ⎘ / | ⚡                 ← ↓ →
+ * Arrows repeat while held. ⎘ pastes the clipboard. A long press on "/" and "|" sends "\" and "&".
+ * A tap on CTRL or ALT applies it to the next key; a long press locks it.
  * Each key is a button for TalkBack, with a spoken name, the long press as an action and the CTRL/ALT state.
  * Rows are 48 dp high (touch target guideline).
  */
@@ -77,6 +78,7 @@ fun ExtraKeys(
     chipDot: Color,
     onChip: () -> Unit,
     onSnippets: () -> Unit,
+    onPaste: () -> Unit,
 ) {
     val bg = Color(scheme.background)
     val fg = Color(scheme.foreground)
@@ -99,10 +101,10 @@ fun ExtraKeys(
             }
             Row(Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Mod("ALT", "Alt", modifiers.alt, fg, keyBg, accent, bg)
-                Key("-", "Minus", fg, keyBg, alt = "_", altSpoken = "Type underscore", onTap = { sink.char('-'.code) }, onLong = { sink.char('_'.code) })
+                IconKey(Icons.Paste, "Paste", fg, keyBg, onPaste)
                 Key("/", "Slash", fg, keyBg, alt = "\\", altSpoken = "Type backslash", onTap = { sink.char('/'.code) }, onLong = { sink.char('\\'.code) })
                 Key("|", "Vertical bar", fg, keyBg, alt = "&", altSpoken = "Type ampersand", onTap = { sink.char('|'.code) }, onLong = { sink.char('&'.code) })
-                IconKey(fg, keyBg, onSnippets)
+                IconKey(Icons.Bolt, "Snippets", fg, keyBg, onSnippets)
             }
         }
         // 3/8 of the width, so that each arrow is about as wide as a key on the left. The empty cells keep ↑ above ↓.
@@ -230,7 +232,8 @@ private fun RowScope.Mod(label: String, spoken: String, key: ModKey, fg: Color, 
 }
 
 @Composable
-private fun RowScope.IconKey(fg: Color, bg: Color, onTap: () -> Unit) {
+private fun RowScope.IconKey(icon: ImageVector, spoken: String, fg: Color, bg: Color, onTap: () -> Unit) {
+    val view = LocalView.current
     val tap by rememberUpdatedState(onTap)
     Box(
         Modifier
@@ -240,13 +243,13 @@ private fun RowScope.IconKey(fg: Color, bg: Color, onTap: () -> Unit) {
             .background(bg)
             .clearAndSetSemantics {
                 role = Role.Button
-                contentDescription = "Snippets"
+                contentDescription = spoken
                 onClick { tap(); true }
             }
-            .pointerInput(Unit) { detectTapGestures(onTap = { tap() }) },
+            .pointerInput(Unit) { detectTapGestures(onTap = { view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); tap() }) },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Bolt, contentDescription = null, tint = fg, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(20.dp))
     }
 }
 
