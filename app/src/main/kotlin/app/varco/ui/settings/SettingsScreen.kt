@@ -72,6 +72,7 @@ import app.varco.ui.components.Icons
 import app.varco.ui.components.ListRow
 import app.varco.ui.components.SectionHeader
 import app.varco.ui.components.SwitchRow
+import app.varco.ui.components.openLink
 import app.varco.ui.nav.Navigator
 import app.varco.ui.nav.Route
 import kotlinx.coroutines.Dispatchers
@@ -182,6 +183,16 @@ fun SettingsScreen(nav: Navigator) {
             SectionHeader("About")
             ListRow(title = "Varco ${BuildConfig.VERSION_NAME}", subtitle = "No analytics, no network use except SSH. GPL-3.0.", icon = Icons.Info)
             ListRow(title = "Open-source licences", onClick = { licences = true })
+
+            SectionHeader("Support")
+            ListRow(
+                title = "Donate bitcoin",
+                subtitle = "btcpay.priorato.org",
+                icon = Icons.Bitcoin,
+                onClick = { openLink(context, "https://btcpay.priorato.org/api/v1/invoices?storeId=31ntjiLSTmSSuTC6FrR81z6AAku46bLF2FKAL3MFHtV5&orderId=Donation&checkoutDesc=Donation&currency=USD") },
+            )
+            ListRow(title = "X", subtitle = "@turtlecute33", icon = Icons.AlternateEmail, onClick = { openLink(context, "https://x.com/turtlecute33") })
+            ListRow(title = "Nostr", subtitle = "turtlecute@primal.net", icon = Icons.Hub, onClick = { openLink(context, "https://primal.net/turtlecute") })
             Spacer(Modifier.height(32.dp))
         }
     }

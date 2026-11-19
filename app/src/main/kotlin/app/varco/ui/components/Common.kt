@@ -1,8 +1,11 @@
 package app.varco.ui.components
 
+import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -197,6 +200,14 @@ fun ConfirmDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+}
+
+/** Opens a web page in the browser. Only https. No crash on a phone with no browser. */
+@SuppressLint("UseKtx") // core-ktx is not a direct dependency
+fun openLink(context: Context, url: String) {
+    val uri = Uri.parse(url)
+    if (uri.scheme != "https" || uri.host.isNullOrEmpty()) return
+    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
 }
 
 /** Copies [text]; a [sensitive] copy is hidden from the clipboard preview and cleared after a minute. */
