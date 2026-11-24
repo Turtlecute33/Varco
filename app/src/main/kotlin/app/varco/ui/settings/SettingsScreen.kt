@@ -68,6 +68,7 @@ import app.varco.term.Scheme
 import app.varco.term.Schemes
 import app.varco.ui.components.Bar
 import app.varco.ui.components.ConfirmDialog
+import app.varco.ui.components.DONATE_URL
 import app.varco.ui.components.Icons
 import app.varco.ui.components.ListRow
 import app.varco.ui.components.SectionHeader
@@ -189,7 +190,7 @@ fun SettingsScreen(nav: Navigator) {
                 title = "Donate bitcoin",
                 subtitle = "btcpay.priorato.org",
                 icon = Icons.Bitcoin,
-                onClick = { openLink(context, "https://btcpay.priorato.org/api/v1/invoices?storeId=31ntjiLSTmSSuTC6FrR81z6AAku46bLF2FKAL3MFHtV5&orderId=Donation&checkoutDesc=Donation&currency=USD") },
+                onClick = { openLink(context, DONATE_URL) },
             )
             ListRow(title = "X", subtitle = "@turtlecute33", icon = Icons.AlternateEmail, onClick = { openLink(context, "https://x.com/turtlecute33") })
             ListRow(title = "Nostr", subtitle = "turtlecute@primal.net", icon = Icons.Hub, onClick = { openLink(context, "https://primal.net/turtlecute") })

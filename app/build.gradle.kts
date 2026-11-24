@@ -26,8 +26,8 @@ android {
         applicationId = "app.varco"
         minSdk = 35
         targetSdk = 37
-        versionCode = 12
-        versionName = "0.2.8"
+        versionCode = 13
+        versionName = "0.2.9"
     }
 
     buildTypes {

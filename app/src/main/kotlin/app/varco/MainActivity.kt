@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import app.varco.term.Schemes
+import app.varco.ui.components.DonatePrompt
 import app.varco.ui.components.SensitiveClip
 import app.varco.ui.lock.LockScreen
 import app.varco.ui.nav.AppNav
@@ -61,6 +62,7 @@ class MainActivity : ComponentActivity() {
                     } else {
                         screens.SaveableStateProvider("screens") { AppNav(nav) }
                         PromptDialogs()
+                        DonatePrompt()
                     }
                 }
             }

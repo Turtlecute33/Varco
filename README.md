@@ -102,6 +102,8 @@ Supported keys: RSA, ECDSA P-256, and Ed25519 on firmware 5.7 and later.
   ask for a downloadable font.
 - Settings › Support has links to donate and to the developer on X and Nostr. They open in your
   browser. The app itself does not connect to these hosts.
+- A small donation card shows when you open the app: first 7 days after the install, then at most
+  once each 3 months. It sends no notification and makes no request.
 - Varco does not log terminal data. The notification shows only the number of open sessions.
 - No backups: your data stays out of cloud backup and device transfer.
 - Permissions: Internet (SSH), nearby devices (SSH to a server on your local network, asked only
